@@ -1,0 +1,1149 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>DEVY Implementation Master File</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: sticky tab bar → one view at a time; player detail opens in a side drawer from any view */
+:root{
+  --bg:#EAF5FC; --surface:#FFFFFF; --surface-2:#EAF2F8; --line:#D2E2EE; --fg:#1B2733; --muted:#5C6A77;
+  --c1:#2B679C; --c1-soft:#E3EDF6; --c2:#B85A26; --c2-soft:#F7E9E0; --c3:#456537; --c3-soft:#E6EEE1;
+  --gate:#9A7406; --gate-soft:#FBF3DE; --flag:#A8322A; --plate:#FFFFFF;
+  --k-lead:#1F4E79; --k-mifotra:#0F7B6C; --k-gov:#6B4C9A; --k-local:#B8661A; --k-contract:#8A6D10; --k-private:#A23B3B; --k-digital:#566778;
+  --s-devy:#E11D48; --s-devy-soft:#FFF1F2; --s-ingazi:#0284C7; --s-ingazi-soft:#F0F9FF; --s-gw:#047857; --s-gw-soft:#ECFDF5; --s-gov:#5C6A77; --s-data:#A16207;
+  --shadow:0 1px 2px rgba(20,35,50,.06),0 6px 20px rgba(20,35,50,.06);
+  --on-comp:#FFFFFF;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Public Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1A24; --surface:#16232E; --surface-2:#1D2C38; --line:#2A3B4A; --fg:#E4EAF0; --muted:#97A5B2;
+  --c1:#6FA6D8; --c1-soft:#1B2C3C; --c2:#E08A5A; --c2-soft:#33231A; --c3:#8DB878; --c3-soft:#1E2A1A;
+  --gate:#D9B23F; --gate-soft:#2C2614; --flag:#E2766C;
+  --k-lead:#6FA6D8; --k-mifotra:#4FC2B0; --k-gov:#AE93DA; --k-local:#E6A25E; --k-contract:#D2B551; --k-private:#E07C7C; --k-digital:#9BB0C2;
+  --s-devy:#FB7185; --s-devy-soft:#3A1820; --s-ingazi:#38BDF8; --s-ingazi-soft:#132A3A; --s-gw:#34D399; --s-gw-soft:#12291F; --s-gov:#97A5B2; --s-data:#E0B04A;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25); --on-comp:#11171D; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1A24; --surface:#16232E; --surface-2:#1D2C38; --line:#2A3B4A; --fg:#E4EAF0; --muted:#97A5B2;
+  --c1:#6FA6D8; --c1-soft:#1B2C3C; --c2:#E08A5A; --c2-soft:#33231A; --c3:#8DB878; --c3-soft:#1E2A1A;
+  --gate:#D9B23F; --gate-soft:#2C2614; --flag:#E2766C;
+  --k-lead:#6FA6D8; --k-mifotra:#4FC2B0; --k-gov:#AE93DA; --k-local:#E6A25E; --k-contract:#D2B551; --k-private:#E07C7C; --k-digital:#9BB0C2;
+  --s-devy:#FB7185; --s-devy-soft:#3A1820; --s-ingazi:#38BDF8; --s-ingazi-soft:#132A3A; --s-gw:#34D399; --s-gw-soft:#12291F; --s-gov:#97A5B2; --s-data:#E0B04A;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25); --on-comp:#11171D; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:0 48px}
+.wrap{max-width:1200px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--c1);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.tbc{color:var(--flag);font-weight:600;font-size:.86em;white-space:nowrap}
+.note{font-size:12.5px;color:var(--muted);margin:10px 0 0}
+
+header.top{padding-block:28px 18px;display:grid;gap:14px}
+header.top h1{font-size:clamp(28px,4.2vw,42px);font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--muted);max-width:78ch;margin:0}
+.facts{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:13.5px}
+.facts b{font-family:var(--f-mono);font-weight:600}
+.draft{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--flag);border:1px solid var(--flag);border-radius:4px;padding:1px 6px;vertical-align:middle;margin-left:10px}
+
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line);display:flex;gap:2px;overflow-x:auto;padding-block:8px 0;scrollbar-width:none}
+nav.tabs button{background:none;border:0;padding:10px 12px 12px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--fg)}
+nav.tabs button:hover{color:var(--fg)}
+section.view{padding-block:22px 0}
+.intro{color:var(--muted);margin:0 0 18px;max-width:82ch}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;align-items:center}
+.legend .lbl{font-size:12.5px;color:var(--muted);margin-right:4px}
+.fbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px 4px 8px;font-size:12.5px;cursor:pointer}
+.fbtn i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.fbtn[aria-pressed="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
+.clearsel{font-size:12.5px;border:0;background:none;color:var(--c1);cursor:pointer;text-decoration:underline;padding:4px}
+
+/* component map */
+.comp{margin-bottom:26px}
+.comp-head{display:grid;grid-template-columns:1fr auto;gap:6px 18px;align-items:end;padding:16px 18px;border-radius:10px 10px 0 0;color:var(--on-comp)}
+.comp-head h2{font-size:20px;font-weight:700}
+.comp-head .meta{font-size:13px;opacity:.92}
+.comp-head .amt{font-family:var(--f-mono);font-size:22px;font-weight:600;text-align:right}
+.comp-head .amt small{display:block;font-family:var(--f-body);font-size:11.5px;font-weight:500;opacity:.85}
+.c1 .comp-head{background:var(--c1)} .c2 .comp-head{background:var(--c2)} .c3 .comp-head{background:var(--c3)}
+.subs{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-top:0;border-radius:0 0 10px 10px;overflow:hidden}
+.sc{background:var(--surface);padding:16px 16px 18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.sc-top{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.sc h3{font-size:16.5px;font-weight:700;display:flex;gap:10px;align-items:baseline}
+.sc h3 .n{font-family:var(--f-mono);font-size:14px}
+.sc .samt{font-family:var(--f-mono);font-weight:600;font-size:14px;white-space:nowrap}
+.c1 .sc h3 .n,.c1 .samt{color:var(--c1)} .c2 .sc h3 .n,.c2 .samt{color:var(--c2)} .c3 .sc h3 .n,.c3 .samt{color:var(--c3)}
+.ssl{list-style:none;margin:0;padding:0;display:grid;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.ssl li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:7px 10px;font-size:13.2px;border-top:1px solid var(--line)}
+.ssl li:first-child{border-top:0}
+.ssl .code{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.ssl .amt{font-family:var(--f-mono);font-size:12.5px;font-weight:600;white-space:nowrap}
+details.steps summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted)}
+details.steps ul{margin:8px 0 0;padding-left:18px;font-size:13px;display:grid;gap:3px}
+.sc .out{font-size:12.5px;font-style:italic;color:var(--muted)}
+.sc .who{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
+.sc .who .eyebrow{width:100%}
+
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface-2);border-radius:6px;padding:4px 9px 4px 0;font-size:12.5px;font-weight:600;cursor:pointer;text-align:left;line-height:1.25;overflow:hidden;transition:opacity .15s,border-color .15s}
+.chip::before{content:"";align-self:stretch;width:4px;background:var(--k);flex:none}
+.chip:hover{border-color:var(--k)}
+.chip.dim{opacity:.28}
+.chip.on{border-color:var(--k);box-shadow:inset 0 0 0 1px var(--k);background:var(--surface)}
+.chip.sm{font-size:11.5px;padding:3px 7px 3px 0}
+
+.gate{border:1.5px solid var(--gate);background:var(--gate-soft);border-radius:10px;padding:16px 18px;margin-bottom:26px;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,2fr) minmax(0,1fr);gap:18px;align-items:start}
+.gate h2{font-size:18px;color:var(--gate)}
+.gate ol{margin:0;padding-left:20px;font-size:13.5px;display:grid;gap:3px}
+.gate .ratio{font-family:var(--f-mono);font-size:24px;font-weight:600;color:var(--gate)}
+.gate .who{display:flex;flex-wrap:wrap;gap:6px}
+@media (max-width:760px){.gate{grid-template-columns:1fr}}
+
+/* matrix */
+.mx-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table.mx{border-collapse:collapse;width:100%;min-width:900px;font-size:13px}
+.mx th,.mx td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:center;vertical-align:middle}
+.mx thead th{background:var(--surface);font-family:var(--f-mono);font-size:12px;font-weight:600}
+.mx thead th.c1h{color:var(--c1)} .mx thead th.c2h{color:var(--c2)} .mx thead th.c3h{color:var(--c3)} .mx thead th.gh{color:var(--gate)}
+.mx th.pl{text-align:left;font-family:var(--f-body);font-size:13px;min-width:250px}
+.mx td.pl{text-align:left}
+.mx tr.grp td{background:var(--surface-2);text-align:left;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.dot{display:inline-block;width:13px;height:13px;border-radius:50%;background:transparent;border:2px solid var(--k);cursor:pointer;padding:0;vertical-align:middle}
+.dot.lead{width:16px;height:16px;border:0;background:var(--k);box-shadow:0 0 0 3px color-mix(in srgb,var(--k) 25%,transparent)}
+.mx .count{font-family:var(--f-mono);color:var(--muted)}
+.mxkey{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:10px 0 0}
+.mxkey span{display:inline-flex;align-items:center;gap:8px}
+
+/* beneficiary journey */
+.jrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media (max-width:900px){.jrow{grid-template-columns:1fr}}
+.jcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow);min-width:0}
+.jcard .plate{background:var(--plate);display:grid;place-items:center;height:200px;padding:12px;border-bottom:1px solid var(--line)}
+.jcard .plate img{max-height:176px;max-width:100%;width:auto;object-fit:contain}
+.jcard .body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px;flex:1}
+.jtag{align-self:flex-start;font-family:var(--f-display);font-weight:700;font-size:19px;padding:4px 12px;border-radius:6px;color:var(--on-comp)}
+.s1 .jtag{background:var(--gate)} .sa .jtag{background:var(--c1)} .sb .jtag{background:var(--c2)}
+.jcard p{margin:0;font-size:14.5px}
+.jfacts{display:flex;flex-wrap:wrap;gap:6px}
+.jfacts span{font-size:12px;font-weight:600;border-radius:4px;padding:2px 8px;background:var(--surface-2);color:var(--muted);font-family:var(--f-mono)}
+.jcard .who{display:flex;flex-wrap:wrap;gap:5px;margin-top:auto;padding-top:6px;border-top:1px dashed var(--line)}
+.jstep{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.jarrow{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin:16px 0}
+.jarrow::before,.jarrow::after{content:"";flex:1;height:1px;background:var(--line)}
+.split{border:1.5px dashed var(--gate);background:var(--gate-soft);border-radius:12px;padding:14px 18px;display:grid;grid-template-columns:auto 1fr;gap:6px 18px;align-items:center;margin:18px 0}
+.split .ratio{font-family:var(--f-mono);font-size:22px;font-weight:600;color:var(--gate)}
+.split p{margin:0;font-size:14px}
+@media (max-width:600px){.split{grid-template-columns:1fr}}
+.fork{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:16px}
+.fork .pb{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:900px){.fork,.fork .pb{grid-template-columns:1fr}}
+.plabel{font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.sa .plabel{color:var(--c1)} .sb .plabel{color:var(--c2)}
+.through{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:22px}
+.through div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13.5px}
+.through b{display:block;font-family:var(--f-display);font-size:15px;margin-bottom:2px}
+
+/* admin journey */
+.lanes-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin-bottom:24px}
+table.lanes{border-collapse:collapse;width:100%;min-width:860px;font-size:12.5px}
+.lanes th,.lanes td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:center}
+.lanes th.st,.lanes td.st{text-align:left;padding-left:12px;min-width:180px}
+.lanes thead th{font-size:11.5px;font-weight:700;color:var(--muted)}
+.lanes thead th span{display:block;height:4px;border-radius:2px;background:var(--sc);margin:4px auto 0;width:28px}
+.lanes td .on{display:inline-block;width:14px;height:14px;border-radius:3px;background:var(--sc)}
+.lanes td .rd{display:inline-block;width:14px;height:14px;border-radius:3px;border:2px solid var(--sc)}
+.lanes tr{cursor:pointer}
+.lanes tbody tr:hover td{background:var(--surface-2)}
+.astage{display:grid;grid-template-columns:52px minmax(0,1fr);gap:14px;position:relative;padding-bottom:16px}
+.astage::before{content:"";position:absolute;left:25px;top:48px;bottom:0;width:2px;background:var(--line)}
+.astage:last-child::before{display:none}
+.astage .num{width:52px;height:52px;border-radius:12px;display:grid;place-items:center;font-family:var(--f-mono);font-weight:600;background:var(--c3-soft);color:var(--c3);border:1.5px solid var(--c3)}
+.acard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:12px;box-shadow:var(--shadow)}
+.acard .ttl{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;align-items:baseline}
+.acard h3{font-size:17px}
+.acard .when{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.agrid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:12px 22px;font-size:13.5px}
+@media (max-width:760px){.agrid{grid-template-columns:1fr}}
+.agrid h4{margin:0 0 4px;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.agrid ol{margin:0;padding-left:20px;display:grid;gap:3px}
+.agrid p{margin:0}
+.syschips{display:flex;flex-wrap:wrap;gap:6px}
+.sys{font-size:12px;font-weight:600;border-radius:999px;padding:2px 10px;border:1.5px solid var(--sc);color:var(--fg);cursor:pointer;background:var(--surface)}
+.sys.solid{background:var(--sc);color:var(--on-comp);border-color:var(--sc)}
+.acard.flash{animation:flash 1.4s ease}
+.gov-note{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 22px;font-size:13.5px;margin-bottom:24px}
+.gov-note b{display:block;font-family:var(--f-display);font-size:15px}
+
+/* architecture */
+.arch{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}
+@media (max-width:1000px){.arch{grid-template-columns:1fr}}
+figure.diag{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;overflow-x:auto}
+figure.diag svg{display:block;width:100%;min-width:760px;height:auto;color:var(--fg)}
+figure.diag figcaption{font-size:12.5px;color:var(--muted);padding:8px 4px 0}
+.zone{fill:none;stroke:var(--line);stroke-width:1.5;stroke-dasharray:6 4}
+.zlabel{font-family:var(--f-mono);font-size:11px;font-weight:600;fill:var(--muted);letter-spacing:.06em}
+.nd rect{fill:var(--surface);stroke:var(--nc);stroke-width:1.6}
+.nd .hd{fill:var(--nc)}
+.nd text{fill:var(--fg);font-family:var(--f-body);font-size:12px}
+.nd text.t{font-weight:700;font-size:12.8px}
+.nd text.s{fill:var(--muted);font-size:11px}
+.nd{cursor:pointer}
+.nd:hover rect{stroke-width:2.6}
+.nd.sel rect{stroke-width:3;fill:color-mix(in srgb,var(--nc) 10%,var(--surface))}
+.nd.dimn{opacity:.35}
+.ed path,.ed line,.ed polyline{fill:none;stroke:var(--muted);stroke-width:1.4}
+.ed text{fill:var(--muted);font-size:10.5px;font-family:var(--f-body)}
+.ed.hot path,.ed.hot polyline,.ed.hot line{stroke:var(--fg);stroke-width:2.4}
+.ed.hot text{fill:var(--fg);font-weight:600}
+.ed.dime{opacity:.25}
+.ed .dash{stroke-dasharray:5 4}
+.band{fill:var(--surface-2);stroke:var(--line)}
+.bandt{fill:var(--muted);font-size:11.5px;font-family:var(--f-body)}
+.arch-side{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:10px;position:sticky;top:64px}
+.arch-side h3{font-size:18px}
+.arch-side .own{font-size:12.5px;color:var(--muted)}
+.arch-side ul{margin:0;padding-left:18px;font-size:13.5px;display:grid;gap:4px}
+.arch-side .st{font-size:12px;font-weight:700;border-radius:4px;padding:2px 8px;justify-self:start}
+.st.live{background:var(--c3-soft);color:var(--c3)} .st.build{background:var(--gate-soft);color:var(--gate)} .st.plan{background:var(--surface-2);color:var(--muted)}
+.decisions{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:18px}
+.decisions div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13.5px}
+.decisions b{display:block;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;margin-bottom:4px}
+.decisions .ok b{color:var(--c3)} .decisions .pend b{color:var(--flag)}
+.decisions ul{margin:0;padding-left:18px;display:grid;gap:3px}
+
+
+/* journey additions */
+.sech{font-size:20px;margin:30px 0 10px}
+.jcav{font-size:12.5px !important;color:var(--muted);margin:0;border-left:3px solid var(--flag);padding-left:8px}
+.elig{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;margin-top:16px}
+@media (max-width:760px){.elig{grid-template-columns:1fr}}
+.elig>div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:13.8px}
+.elig b{display:block;font-family:var(--f-display);font-size:16px;margin-bottom:6px}
+.elig ul{margin:0;padding-left:18px;display:grid;gap:3px}
+.elig p{margin:0 0 8px}
+.elig p b{display:inline;font-family:var(--f-body);font-size:inherit}
+figure.gantt{margin:0}
+.gwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table.gt{border-collapse:collapse;width:100%;min-width:900px;font-size:12px}
+.gt th,.gt td{padding:0;height:26px;text-align:center}
+.gt th.gy{font-family:var(--f-mono);font-size:11.5px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);color:var(--muted)}
+.gt th.gm{font-family:var(--f-mono);font-size:10.5px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--line);min-width:22px}
+.gt td.gl,.gt th.gl{text-align:left;padding:4px 10px;white-space:nowrap;font-size:12.5px;min-width:220px;position:sticky;left:0;background:var(--surface);z-index:1}
+.gt td{border-bottom:1px solid var(--line)}
+.gt td.gc{position:relative}
+.gt td.yb,.gt th.yb{border-left:1px solid var(--line)}
+.gb{position:absolute;left:0;right:0;top:7px;bottom:7px;display:block}
+.gd{font-size:14px;position:relative}
+.gantt figcaption{font-size:12.5px;color:var(--muted);padding:8px 2px 0}
+/* caveat */
+.caveat{border:1.5px solid var(--flag);border-radius:12px;padding:16px 18px;margin-bottom:18px;background:var(--surface);display:grid;gap:10px;font-size:14px}
+.cv-h{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.cv-h h2{font-size:18px}
+.cv-badge{background:var(--flag);color:var(--surface);font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:4px;padding:2px 8px}
+.cv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.cv-grid div{background:var(--surface-2);border-radius:8px;padding:10px 12px;display:grid;gap:2px}
+.cv-n{font-family:var(--f-mono);font-size:20px;font-weight:600}
+.cv-grid div:last-child .cv-n{color:var(--flag)}
+.cv-l{font-size:12.5px;color:var(--muted)}
+.caveat p{margin:0}
+.caveat ol{margin:0;padding-left:20px;display:grid;gap:3px}
+/* architecture grid */
+.idflow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;background:var(--s-gw-soft);border:1px solid var(--s-gw);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--s-gw);font-weight:600}
+.idflow b{margin-right:6px}
+.idflow i{font-style:normal;opacity:.8}
+.ag-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.ag{display:grid;grid-template-columns:150px repeat(6,minmax(170px,1fr));min-width:1180px}
+.ah0{background:var(--surface)}
+.ah{background:var(--fg);color:var(--bg);padding:9px 10px;display:grid;gap:2px;border-left:1px solid var(--surface)}
+.ah b{font-size:12.5px;letter-spacing:.03em}
+.ah span{font-size:11px;opacity:.75}
+.al{border:0;text-align:left;padding:10px 12px;background:color-mix(in srgb,var(--lc) 12%,var(--surface));border-top:1px solid var(--line);cursor:pointer;display:grid;gap:3px;align-content:start}
+.al b{color:var(--lc);font-size:13px;font-family:var(--f-display)}
+.al span{font-size:11px;color:var(--muted)}
+.al.sel{box-shadow:inset 4px 0 0 var(--lc)}
+.ac{padding:8px;border-top:1px solid var(--line);border-left:1px solid var(--line);background:color-mix(in srgb,var(--lc) 5%,var(--surface));display:grid;gap:6px;align-content:start;transition:opacity .15s}
+.ac.dimc{opacity:.3}
+.ac .none{color:var(--muted);font-size:12px;padding:4px}
+.mod{background:var(--surface);border:1.3px solid var(--lc);border-radius:7px;padding:6px 8px;display:grid;gap:2px}
+.mod.dashed{border-style:dashed}
+.mod .mt{font-size:12.3px;font-weight:700;line-height:1.25}
+.mod .md{font-size:11.3px;color:var(--muted);line-height:1.3}
+.mtags{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+.mtag{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:3px;padding:1px 5px;white-space:nowrap}
+.mtag.todo{border:1px solid var(--flag);color:var(--flag)}
+.mtag.data{background:var(--s-data);color:var(--surface)}
+.akey{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12.5px;color:var(--muted);margin-top:10px;align-items:center}
+.akey>span{display:inline-flex;gap:6px;align-items:center}
+.akey i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.checks{margin:0;padding-left:18px;font-size:13.5px;display:grid;gap:3px}
+
+
+/* arch v4: chips + arrows */
+.ag2{position:relative;display:grid;grid-template-columns:150px repeat(6,minmax(180px,1fr));min-width:1240px}
+.ag2 .ac{background:color-mix(in srgb,var(--lc) 5%,var(--surface));padding:12px 12px;gap:12px;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;min-height:56px}
+svg.aflow{position:absolute;left:0;top:0;z-index:1;pointer-events:none;overflow:visible}
+.fl{fill:none;stroke-width:1.2;opacity:.55;transition:opacity .15s}
+.fl.hot{stroke-width:2.2;opacity:1}
+.fl.dim{opacity:.08}
+.fll{font-size:10.5px;font-family:var(--f-body);font-weight:600;fill:var(--fg);paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.achip{position:relative;z-index:2;display:flex;align-items:center;gap:5px;flex-wrap:wrap;text-align:left;background:var(--surface);border:1.4px solid var(--lc);border-left-width:4px;border-radius:7px;padding:6px 8px;font-size:12.2px;font-weight:600;line-height:1.25;cursor:pointer;transition:opacity .15s,box-shadow .15s}
+.achip span:first-child{flex:1 1 auto;min-width:0}
+.achip.dashed{border-style:dashed;border-left-style:solid}
+.achip:hover{box-shadow:0 0 0 2px color-mix(in srgb,var(--lc) 35%,transparent)}
+.achip.sel{background:color-mix(in srgb,var(--lc) 14%,var(--surface));box-shadow:0 0 0 2px var(--lc)}
+.achip.dimc{opacity:.22}
+.ag2 .al{position:relative;z-index:2}
+.apanel{position:fixed;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);width:min(380px,calc(100% - 32px));max-height:70%;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--lc);border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.18);padding:14px 16px;z-index:30;display:grid;gap:8px;font-size:13.5px}
+.apanel p{margin:0}
+.ap-h{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start}
+.ap-h h3{font-size:18px;color:var(--lc)}
+.ap-l{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.ap-dec{background:var(--surface-2);border-radius:8px;padding:8px 10px;font-size:13px}
+.ap-dec em{display:block;font-style:normal;color:var(--muted);font-size:12px;margin-top:2px}
+.ap-c{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.ap-c span{color:var(--muted);font-size:12.5px}
+.linkish{border:0;background:none;padding:0;color:var(--c1);font-weight:600;cursor:pointer;text-align:left;text-decoration:underline;text-underline-offset:2px}
+/* indicators */
+table.ind{min-width:980px}
+.lvl{font-size:11px;font-weight:700;border-radius:4px;padding:2px 6px;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.lvl.pdo{background:var(--c1-soft);color:var(--c1)}
+.role{font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;border:1.5px solid var(--s-devy)}
+.role.on{background:var(--s-devy);color:var(--surface)}
+.role.rd{color:var(--s-devy)}
+.fields{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;font-size:13.5px}
+.fields li{background:var(--surface-2);border-radius:8px;padding:10px 12px}
+.fields b{display:block;font-family:var(--f-display)}
+/* project flow */
+.flowfig{margin:0 0 6px}
+.plate.wide{background:var(--plate);border:1px solid var(--line);border-radius:12px;padding:14px;overflow-x:auto}
+.plate.wide img{display:block;width:100%;min-width:760px;max-width:none;height:auto}
+.flowfig figcaption{font-size:12.5px;color:var(--muted);padding:8px 2px 0}
+
+/* budget */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:22px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:2px}
+.kpi .v{font-family:var(--f-mono);font-size:24px;font-weight:600}
+.kpi .l{font-size:13px;color:var(--muted)}
+.kpi.k1 .v{color:var(--c1)} .kpi.k2 .v{color:var(--c2)} .kpi.k3 .v{color:var(--c3)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:18px;min-width:0}
+.panel h2{font-size:18px;margin-bottom:4px}
+.panel .meta{color:var(--muted);font-size:13px;margin:0 0 14px}
+.hbars{display:grid;gap:8px}
+.hbar{display:grid;grid-template-columns:minmax(150px,280px) minmax(0,1fr) 110px;gap:12px;align-items:center;font-size:13px}
+.hbar .lab{min-width:0}
+.hbar .lab b{font-family:var(--f-mono);font-weight:600;margin-right:6px}
+.hbar .track{height:16px;background:var(--surface-2);border-radius:3px;overflow:hidden}
+.hbar .track div{height:100%;border-radius:3px}
+.hbar .v{font-family:var(--f-mono);text-align:right;font-weight:600;white-space:nowrap}
+.hbar .v small{display:block;font-weight:500;color:var(--muted)}
+@media (max-width:600px){.hbar{grid-template-columns:1fr 90px}.hbar .track{grid-column:1/-1;order:3}}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+@media (max-width:900px){.two{grid-template-columns:1fr}}
+.tbl-wrap{overflow-x:auto}
+table.t{border-collapse:collapse;width:100%;font-size:13.5px;min-width:560px}
+.t th,.t td{text-align:left;padding:8px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.t th{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.t td.r,.t th.r{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.t tfoot td{font-weight:700;border-bottom:0}
+.btools{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-bottom:12px;font-size:13px}
+.btools label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.tbtn{border:1px solid var(--line);background:var(--surface-2);border-radius:6px;padding:4px 10px;font-size:12.5px;cursor:pointer}
+table.bt{border-collapse:collapse;width:100%;min-width:680px;font-size:13.2px}
+.bt td{border-bottom:1px solid var(--line);padding:7px 8px;vertical-align:top}
+.bt td.code{font-family:var(--f-mono);font-size:12.5px;white-space:nowrap;width:1%}
+.bt td.amt{font-family:var(--f-mono);text-align:right;white-space:nowrap;width:1%;font-weight:600}
+.bt td.amt.zero{color:var(--muted);font-weight:400}
+.bt tr.L0 td{background:var(--surface-2);font-weight:700;font-family:var(--f-display);font-size:15px}
+.bt tr.L1 td{font-weight:700}
+.bt tr.L1 td.code{color:var(--cc)}
+.bt tr.L2 td{font-weight:600}
+.bt tr.L2 td:nth-child(2){padding-left:18px}
+.bt tr.L3 td:nth-child(2){padding-left:36px;color:var(--fg)}
+.bt tr.L3 td.code{color:var(--muted);padding-left:20px}
+.bt .was{display:inline-block;font-family:var(--f-mono);font-size:11px;color:var(--flag);margin-left:6px;font-weight:500}
+.bt .tog{border:0;background:none;cursor:pointer;padding:0 4px 0 0;color:var(--muted);font-family:var(--f-mono)}
+.bt details{margin-top:4px}
+.bt details summary{font-size:12px;color:var(--c1);cursor:pointer}
+.bt details p{margin:4px 0 0;font-size:12.5px;color:var(--muted);white-space:pre-line}
+.flow{display:grid;gap:8px;font-size:13.5px}
+.flow .node{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:8px 12px}
+.flow .node b{display:block}
+.flow .arr{color:var(--muted);text-align:center;font-family:var(--f-mono);line-height:1}
+.flow .row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+svg text{fill:var(--fg)}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(10,18,26,.35);z-index:40}
+aside.drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--surface);border-left:1px solid var(--line);z-index:50;overflow-y:auto;box-shadow:-8px 0 30px rgba(0,0,0,.12);padding:calc(env(safe-area-inset-top,0px) + 20px) 20px calc(env(safe-area-inset-bottom,0px) + 28px);display:flex;flex-direction:column;gap:16px}
+@media (max-width:600px){aside.drawer{top:auto;width:100%;max-height:82%;border-left:0;border-top:1px solid var(--line);border-radius:14px 14px 0 0}}
+.dhead{display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:start}
+.dhead h2{font-size:22px;line-height:1.2}
+.dclose{border:1px solid var(--line);background:var(--surface-2);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px}
+.cat{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--k)}
+.cat i{width:10px;height:10px;border-radius:2px;background:var(--k)}
+.dblurb{margin:0;font-size:14px;color:var(--muted)}
+.dsec{display:grid;gap:8px}
+.resp{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.resp .rh{padding:7px 12px;font-size:12px;font-weight:700;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.resp .rh span:last-child{font-family:var(--f-mono);font-weight:500;opacity:.9}
+.resp.c1 .rh{background:var(--c1-soft);color:var(--c1)} .resp.c2 .rh{background:var(--c2-soft);color:var(--c2)} .resp.c3 .rh{background:var(--c3-soft);color:var(--c3)} .resp.cg .rh{background:var(--gate-soft);color:var(--gate)}
+.resp ul{margin:0;padding:10px 12px 10px 28px;font-size:13.5px;display:grid;gap:4px}
+.jlinks{display:flex;flex-wrap:wrap;gap:6px}
+.jlink{border:1px solid var(--line);background:var(--surface-2);border-radius:6px;padding:4px 9px;font-size:12.5px;cursor:pointer}
+.jlink:hover{border-color:var(--fg)}
+.dmeta{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
+
+footer{margin-top:34px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;display:grid;gap:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.flash{animation:flash 1.4s ease}
+@keyframes flash{0%,40%{box-shadow:0 0 0 3px var(--gate)}100%{box-shadow:var(--shadow)}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Digital Entrepreneurship for Vulnerable Urban Youth · P510000</div>
+    <h1>DEVY Implementation Master File<span class="draft">DRAFT</span></h1>
+    <div class="facts">
+      <span>Implementing agency <b>CoK</b></span>
+      <span>Coordinating agency <b>MIFOTRA</b></span>
+      <span>Financing <b>US$3.5M</b> (JSDF, World Bank-administered)</span>
+      <span>Period <b>Mar 2026 – Apr 2029</b></span>
+      <span>Beneficiaries <b>9,000 → ~3,000</b></span>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <button role="tab" id="tab-map" aria-controls="map" aria-selected="true">Components &amp; players</button>
+    <button role="tab" id="tab-matrix" aria-controls="matrix" aria-selected="false">Responsibility matrix</button>
+    <button role="tab" id="tab-journey" aria-controls="journey" aria-selected="false">Beneficiary journey</button>
+    <button role="tab" id="tab-admin" aria-controls="admin" aria-selected="false">Administration journey</button>
+    <button role="tab" id="tab-arch" aria-controls="arch" aria-selected="false">System architecture</button>
+    <button role="tab" id="tab-budget" aria-controls="budget" aria-selected="false">Budget</button>
+  </nav>
+
+  <section class="view" id="map" role="tabpanel" aria-labelledby="tab-map">
+    <p class="intro">Each sub-component shows its budget (Total per Activity), its activity lines down to 1.1.1-level and the players involved. Lines with no direct cost show no amount. Click a player to open its responsibilities across the project.</p>
+    <div class="legend" id="legend"></div>
+    <div id="mapBody"></div>
+  </section>
+
+  <section class="view" id="matrix" role="tabpanel" aria-labelledby="tab-matrix" hidden>
+    <p class="intro">Every player against every sub-component. Click a row name or a mark for detail.</p>
+    <div class="legend" id="legend2"></div>
+    <div class="mx-wrap"><table class="mx" id="mx"></table></div>
+    <div class="mxkey"><span><i class="dot lead" style="--k:var(--fg)"></i> Leads / accountable</span><span><i class="dot" style="--k:var(--fg)"></i> Supports / contributes</span></div>
+  </section>
+
+  <section class="view" id="journey" role="tabpanel" aria-labelledby="tab-journey" hidden>
+    <div id="journeyBody"></div>
+  </section>
+
+  <section class="view" id="admin" role="tabpanel" aria-labelledby="tab-admin" hidden>
+    <div id="adminBody"></div>
+  </section>
+
+  <section class="view" id="arch" role="tabpanel" aria-labelledby="tab-arch" hidden>
+    <div id="archBody"></div>
+  </section>
+
+  <section class="view" id="budget" role="tabpanel" aria-labelledby="tab-budget" hidden>
+    <div id="budgetBody"></div>
+  </section>
+
+  <footer>
+    <div>Sources: DEVY Project Paper / PAD (10 Apr 2026); Project Implementation Manual (May 2026, with review comments); PPSD (Jun 2026); JSDF Budget Activity sheet (08 Jun 2026, comments 03 Jul); implementation Gantt (ver. 18 Sep); MIFOTRA–DEVY system integration meeting (30 Sep 2026); DEVY System Integration Discussion deck (1 Oct 2026).</div>
+    <div><span class="tbc">[TBC]</span> marks items the sources leave open or state inconsistently. Figures labelled “derived” are calculated here.</div>
+  </footer>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle" hidden></aside>
+<aside class="apanel" id="archPanel" aria-live="polite" hidden></aside>
+
+<script>
+const BUDGET = [{"id": "1", "name": "Improve Labor Market Readiness for 9,000 youth", "amount": 600000.0, "subs": [{"id": "1.1", "name": "Outreach, targeting and mobilization", "amount": 375371.0, "items": [{"id": "1.1.1", "orig": "1.1.1.", "name": "Recruitment of a Service provider and Delivery of the project (into phased implementation)", "amount": 375371.0, "acts": [{"id": "1.1.1.1", "orig": "1.1.1.1.", "name": "Coordination of outreach, communications & mobilisation (Car Free Days, Inteko community meetings, and Umuganda, alongside targeted digital tools such as social media advertising (Facebook, Instagram, WhatsApp with direct application links), SMS alerts (bulk messaging to reach basic phone users), and a network of youth volunteers who will conduct door‑to‑door sensitization and assist with registration.", "amount": 367371.0, "note": "To facilitate implementation of Component 1"}, {"id": "1.1.1.2", "orig": "1.1.1.2.", "name": "Local government coordination", "amount": 0.0, "note": ""}, {"id": "1.1.1.3", "orig": "1.1.1.3.", "name": "Assessing the foundational skills gap including soft skills, technical and digital skills (staffing, tools such as skillCraft and Lumina, community meetings)", "amount": 8000.0, "note": "Assess the skills by a hired consultant who will establish sckillcraft and Lumina tools"}, {"id": "1.1.1.4", "orig": "1.1.1.4", "name": "Conduct assessment on entrepreneurship opportunities in Kigali (staffing, tools, community meetings)", "amount": 0.0, "note": ""}]}, {"id": "1.1.2", "orig": "1.1.2", "name": "Workshops for i) valIdation of assessment of foundational skills gap including soft skills, technical and digital skills ii) entreprenuership oopprtunities", "amount": 0.0, "acts": [{"id": "1.1.2.1", "orig": "1.1.2.1", "name": "Workshops for valIdation of assessment of foundational skills gap including soft skills,", "amount": 0.0, "note": "Coffee break, lunch, soft drinks (to be provided by the service provide)"}, {"id": "1.1.2.2", "orig": "1.1.2.2", "name": "Workshops for valIdation of entrepreneurship opportunities assessment", "amount": 0.0, "note": "Coffe break, lunch, soft drinks (to be provided by the service provider)"}]}, {"id": "1.1.3", "orig": "1.1.3.", "name": "Vulnerable Youth identification, screening and validation", "amount": 0.0, "acts": [{"id": "1.1.3.1", "orig": "1.1.3.1", "name": "Identifying, eligibility screening of project target beneficiaries through - Imibereho Registry, Ingazi and Kora Job Portals", "amount": 0.0, "note": ""}, {"id": "1.1.3.2", "orig": "1.1.2.2", "name": "Ensure outreach, engagement with GRCs, and flexible delivery for women and vulnerable youth", "amount": 0.0, "note": "Transport allowances; Refreshement (Coffee break + Soft drinks) to be provided by the service provider"}, {"id": "1.1.3.3", "orig": "1.1.3.3.", "name": "Workshop to validate a conducted advanced screening/Skills & Competency Assessment of beneficiaries (using skill craft tool)", "amount": 0.0, "note": "Package including coffee break, lunch, soft drinks (to be provided by the service provider"}, {"id": "1.1.3.4", "orig": "1.1.3.4.", "name": "Design and implement orientation plan, an awareness campaign through media engagement, community outreach sessions, Enrollment, and stakeholder validation meetings", "amount": 0.0, "note": "1. Service provide will develop & implement a plan 2. CoK will facilitate in mobilization and venue availability"}]}]}, {"id": "1.2", "name": "Training and mentorship", "amount": 20629.0, "items": [{"id": "1.2.1", "orig": "1.2.1.", "name": "Training modules, tools , informed by labor demand studies developed in consultations with key institutions including but not limited to MINICT, MINICOM, RISA, RTB, MoYA, MIFOTRA, RP, RDB, COK, TVET, employers", "amount": 0.0, "acts": [{"id": "1.2.1.1", "orig": "1.2.1.1", "name": "Conducting a workshop engagements with key institutions namely MINICT, RISA, RTB, MoYA, MINICOM, RP, MIFOTRA, COK, RDB and selected Employers to collect insights for module development", "amount": 0.0, "note": "Coffe break, lunch, soft drinks (to be provided by the service provider)"}, {"id": "1.2.1.2", "orig": "1.2.1.2", "name": "Develop training modules in consultation with RISA, RDB, MoYA, MIFOTRA, MINICOM, TVET, and Employers", "amount": 0.0, "note": "Everything by the Service Provider"}, {"id": "1.2.1.3", "orig": "1.2.1.3", "name": "Facilitate the workshop for review and validation of the training materials and tools", "amount": 0.0, "note": "Coffe break, lunch, soft drinks (to be provided by the service provider)"}]}, {"id": "1.2.2", "orig": "1.2.2.", "name": "Assess the conditions for YEGO hubs & other facilities to host training of vulnerable youth ((already conducted by COK/Hubs)", "amount": 0.0, "acts": [{"id": "1.2.2.1", "orig": "1.2.2.1", "name": "Map potential youth centers to facilitate the project implementations (already conducted by COK/Hubs)", "amount": 0.0, "note": ""}, {"id": "1.2.2.2", "orig": "1.2.2.2", "name": "Field visit to assess the status of training venues (already conducted by COK/Hubs - validation needed)", "amount": 0.0, "note": "This to be conducted by service provider and CoK"}]}, {"id": "1.2.3", "orig": "1.2.3.", "name": "Refurbish YEGO hubs & other selected facilities to improve safeguards for PWDs & women (upgrade WASH facilities).", "amount": 20629.0, "acts": [{"id": "1.2.3.1", "orig": "1.2.3.1", "name": "Recruitment/selection of a contractor for refurbishing YEGO Hubs (PWDs access, HWS, equip safe rooms for female participants, Painting, Internet connection)", "amount": 20629.0, "note": "CoK to rercuit a contractor for all refurbishment activities"}, {"id": "1.2.3.2", "orig": "1.2.3.2", "name": "Refurbish YEGO Hubs and other needy facilities to host the trainings (PWDs access, HWS, equip safe rooms for female participants, Painting, Internet connection)", "amount": 0.0, "note": "Everything by the recuited contractor"}, {"id": "1.2.3.3", "orig": "1.2.3.2", "name": "Regular maintainance to upgrade the venues", "amount": 0.0, "note": "Maintainance activities will be done by a contractor during defect reliability period"}]}, {"id": "1.2.4", "orig": "1.2.4.", "name": "Deliver soft skills training (leadership, gender empowerment, entrepreneurship, conflict resolution)", "amount": 0.0, "acts": [{"id": "1.2.4.1", "orig": "1.2.4.1.", "name": "Validation workshop of developed tailored ToT curriculum and training of trainers involving EcoDev Units/BDAs", "amount": 0.0, "note": "Coffe break, lunch, soft drinks (to be provided by a service prover)"}, {"id": "1.2.4.2", "orig": "1.2.4.2.", "name": "Train 9,000 youth with market skills and entrepreneurship modules (Training facilities, Refreshment (water/Tea break)", "amount": 0.0, "note": "Tea break (package) to be provided by a service provider)"}, {"id": "1.2.4.3", "orig": "1.2.4.3.", "name": "Transport allowances for training participants (Including women and PWDs)", "amount": 0.0, "note": "Transport allowances to be provided by a service provider"}, {"id": "1.2.4.4", "orig": "1.2.4.4.", "name": "Select, Evaluate and Validate 3,000 candidates to advance for Phase 2", "amount": 0.0, "note": "Workshop for validation of eligible 3,000 candidates (by a service provider"}, {"id": "1.2.4.5", "orig": "1.2.4.4.", "name": "Learning and Training materials", "amount": 0.0, "note": "Learning materials (notebooks, pens & bags) for 12,162 people include: 12,000 youth (9000 plus 3000), and 140 trainees including 70 BDAs,70 Digital entrepreneurship champions, and 22 from ESC, YEGO & Incubation Centers, Hanga hubs Training and learning materials will be provided by a service provider"}, {"id": "1.2.4.6", "orig": "1.2.4.5.", "name": "Monitoring and Evaluation", "amount": 0.0, "note": "The service provider to hire a car for M&E"}]}]}, {"id": "1.3", "name": "Private sector mobilization and job matching intermediation", "amount": 204000.0, "items": [{"id": "1.3.1", "orig": "1.4.1.", "name": "Facilitate youth apprenticeships & internships into SMEs in ICT, Tourism and tech companies and access to finance", "amount": 204000.0, "acts": [{"id": "1.3.1.1", "orig": "1.4.1.1", "name": "Map employment opportunities, SMES potential to host trained youth", "amount": 0.0, "note": "Mapping SMEs; meeting/visiting employers & SMEs (to be done by a service provider)"}, {"id": "1.3.1.2", "orig": "1.4.1.2", "name": "Linking beneficiaries with mapped SMES (through job fairs, career fairs, BDSs, BDAs) INSTEAD, FACILITATE SMES TO SUPPORT INTERNS (TO GIVE THIS MONEY TO SMES FOR A SMOOTH EPPRENTICESHIPS)", "amount": 0.0, "note": "Venue, media coverage, event branding (baners, t-shirts, etc.) to be done by a service provider"}, {"id": "1.3.1.3", "orig": "1.4.1.3", "name": "Awarding Certificates to training participants", "amount": 0.0, "note": "Certificates for 70 BDAs, 70 Digital entrepreneurship champions, and 22 from ESC, YEGO & Incubation Centers, Hanga hubs (to be provided by a service provider)"}, {"id": "1.3.1.4", "orig": "1.4.1.4.", "name": "Support youth linkage with financial service providers to access finance, seed capital, etc.", "amount": 0.0, "note": "Mapping financial service providers, designing approach method targeting prospective financial service providers, and approach presentation; coffee break, lunch, soft drinks, media coverage (to be done by a service provider)"}, {"id": "1.3.1.5", "orig": "1.4.1.5", "name": "Facilitate youth with secured apprenticeships and/or internships in companies/organizations with stipend (at least 500 youth)", "amount": 204000.0, "note": "Stipent for 500 youth in 6 months (to be provided by a service provider)"}, {"id": "1.3.1.6", "orig": "1.4.1.6", "name": "Organize targeted youth outreach and media campaigns to disseminate digital content and opportunities deployed on Ingazi, Lumina, CoK digital system for informal workers, etc. and user registration", "amount": 0.0, "note": "Organize and facilitate outreach and media campains (to be done by a service provider)"}, {"id": "1.3.1.7", "orig": "1.4.1.7", "name": "Monitoring the beneficiaries during internships (6 months)", "amount": 0.0, "note": "By the Service Provider using recruitment envelop, MIFOTRA and CoK (with M&E dedicated budget above)"}, {"id": "1.3.1.8", "orig": "1.4.1.8", "name": "Conduct tracer survey to track employment status after 4 months of capacity building:", "amount": 0.0, "note": "Enumerators (Data Collectors); Survey platform (e.g., Kobo Toolbox, SurveyCTO, ODK), SMS/IVR costs); Supervision; Report presentation (to be tone by a service provider)"}, {"id": "1.3.1.9", "orig": "1.4.1.9", "name": "Workshops for valIdation survey reports", "amount": 0.0, "note": "Coffee break, lunch, soft drinks in 3 days (to be provided by a service provider)"}]}]}]}, {"id": "2", "name": "Promoting Digital Entrepreneurship Opportunities", "amount": 2000000.0, "subs": [{"id": "2.1", "name": "Practical entrepreneurship and business skills training", "amount": 598000.0, "items": [{"id": "2.1.1", "orig": "2.1.1.", "name": "Develop curriculum & training materials, plus component delivery", "amount": 598000.0, "acts": [{"id": "2.1.1.1", "orig": "2.1.1.1", "name": "Component delivery", "amount": 598000.0, "note": "To facilitate implementation of Component 1"}, {"id": "2.1.1.2", "orig": "2.1.1.1", "name": "Workshop to validate developed tailored curriculum/training modules related to practical entrepreneurship and business skills", "amount": 0.0, "note": "Coffe break, lunch, soft drinks to be provided by a service provider"}, {"id": "2.1.1.3", "orig": "2.1.1.2", "name": "Workshop to review and validate training modules with stakeholders MINICT, RISA, RTB, MoYA, MIFOTRA, RP, RDB, COK, employers (hosted CoK worshops)", "amount": 0.0, "note": "Coffe break, lunch, soft drinks (to be provided by a service provider)"}]}, {"id": "2.1.2", "orig": "2.1.2.", "name": "Deliver entrepreneurship & business skills training (business development skills, digital literacy, gender, climate resilience).", "amount": 0.0, "acts": [{"id": "2.1.2.1", "orig": "2.1.2.1:", "name": "Deliver ToTs for : BDAs (70) and (70 ) Digital entrepreneurship champions, (22) from ESC, YEGO & Incubation Centers, Hanga hubs", "amount": 0.0, "note": "Trainers, Learning materials (note books&pens), Training materials (while board, markers, bags, etc.), Coffe break, lunch, soft drinks (to be provided by a service provider)"}, {"id": "2.1.2.2", "orig": "2.1.2.2", "name": "Deliver advanced entrepreneurship and digital training", "amount": 0.0, "note": "Stipent for 3000 youth in 6 days, Trainers, Trainers, tea break package (to be provided by a service provider)"}, {"id": "2.1.2.3", "orig": "2.1.4.3.", "name": "Deliver coaching and mentoring sessions", "amount": 0.0, "note": "Mentors and coaches to deliver sessions; Digital Tools and Platform Access (to be provided by a service provider)"}, {"id": "2.1.2.4", "orig": "2.1.2.5.", "name": "Monitoring and evaluation of trainings of 3,000 beneficiaries advanced from first phase", "amount": 0.0, "note": "Everything by the Service Provider"}, {"id": "2.1.2.5", "orig": "1.2.2.4", "name": "Conduct tracer survey to track employment status after 4 months of capacity building", "amount": 0.0, "note": "Enumerators (Data Collectors) in 5 days for 3 times (baseline, mid-term, post-project); Survey platform (e.g., Kobo Toolbox, SurveyCTO, ODK), SMS/IVR costs); Supervision for 5 days in 3 times (baseline, mid-term, project immediate impact); Report presentation and validation (all to be done by a service provider)"}]}]}, {"id": "2.2", "name": "Business plan development and competition", "amount": 107000.0, "items": [{"id": "2.2.1", "orig": "2.2.1.-", "name": "Technical and Business support for advanced digital skills & technology adoption (e-commerce, mobile payments, climate-smart practices).", "amount": 107000.0, "acts": [{"id": "2.2.1.1", "orig": "2.2.1.1.", "name": "Organize bootcamp/business clinic and pitching session for potential youth projects ( Implement Business Plan Competition (BPC) in phases using digital platforms and provide business plan training & support for ~3,000 pre-selected youth)", "amount": 0.0, "note": "Training & Preparation; Learning materials (digital/print) for 3,000 youth; Facilitators/mentors for training in 9 days; Coffe break, lunch, soft drinks during intensive sessions (3,000 participants); Transport reimbursement for vulnerable youth; Emergency medical/ first aid (all to be provided by a service provider)"}, {"id": "2.2.1.2", "orig": "2.2.1.2:", "name": "Organize Blind reviews and evaluation by panels comprising successful entrepreneurs in key sectors representatives from financial institutions, and incubators", "amount": 0.0, "note": "Blind Review Preparation; Data entry/anonymization clerks; Digital platform/tool for blind scoring (e.g., SurveyCTO, Kobo with anonymization features, or custom module); Printing/coding of business plans for reviewers who prefer paper; Stationery and supplies; Panel Reviewer Selection/invitations & Honoraria for panelists; Panel Evaluation Sessions; Teabreak, Lunch; Facilitation/moderator Notetakers/rapporteurs; Documentation; Photos/success stories of winning pitches (to be covered by a service provider)"}, {"id": "2.2.1.3", "orig": "2.2.1.3:", "name": "Process and approve for eligible 50-100 top candidates (with up to USD 1.5k each) as seed grants", "amount": 107000.0, "note": "Seed Grants (Direct Transfers to Youth) by CoK 1st Category: 30 youth = USD 1,500 2st Category: 30 youth = USD 1,000 3rd Category: 40 youth = USD 800 TOTAL = USD 107,000 Below will be covered by the service provider Due Diligence & Verification; Background checks on shortlisted candidates (verify identity, business existence; Site visits to verify business premises (for top 100 – fuel/transport for verification officers); Document verification (bank accounts, IDs) Briefing sessions for winners on grant terms and conditions Post-Award Orientation & Mentorship Kick-off: One-day orientation workshop for all 100 winners (venue, catering, materials); Connection to mentors; Introduction to financial institutions (SACCOs, banks for future access) M&E & Tracer Baseline for: Baseline data collection from all 100 winners (business status, income, employment); Photo/video documentation of winners and their businesses; Success story templates and tracking system setup TO BE COVERED BY A SERVICE PROVIDER"}, {"id": "2.2.1.4", "orig": "2.2.1.4:", "name": "Identify and train (50-100) candidates through standardized business competition and award them with $500 (plus 25% as seed funding to concretize their plans).", "amount": 0.0, "note": "Candidate Identification & Outreach: selection and application & application assessment activities plus communication Standardized Training Program: Training curriculum development; Facilitators 5 days; training venue: USD 1000*3 venues (one in each district) Training materials (workbooks, handouts,pens, etc. USD 2,000); Competition Management USD 3000 for Business plan submission platform USD 1,000); Coordination of judges/panel USD 1,000); Scoring and results management USD 1,000 Coffe break, lunch, soft drinks: USD 10*100 persons in 5 day = USD 5000 Awards for 75 youths USD 37500 25% as seed funding USD 9375 Post-Award Support & Mentorship USD 1500 for Briefing session on award conditions and use of funds USD 500; Linkage to mentors USD 500; Follow-up on seed funding utilization USD 500 M&E & Documentation USD 625 for Baseline data collection from winners; Photo/video documentation of awardees; Success story templates"}, {"id": "2.2.1.5", "orig": "2.2.1.4.", "name": "Engage Tech companies for digital solution support", "amount": 0.0, "note": "Tech Company Mapping & Outreach Research and identification of relevant tech companies, Stakeholder meetings Matchmaking & Networking Events for 2 half-day matchmaking events connecting 20-30 youth entrepreneurs with tech company representatives (venue refreshments: facilitator/moderator stipend) Technical Advisory Sessions for 4 technical clinics where tech company volunteers will review youth digital solutions Digital Tools/Platform Access for Trial subscriptions or credits for youth to access development tools Documentation & Reporting ON engagements; Brief success stories; Contact database for future collaboration TO BE COVERED BY A SERVICE PROVIDER"}, {"id": "2.2.1.6", "orig": "2.2.1.5.", "name": "Facilitate beneficiaries access to the affordable digital devices (smart phone, tech cameras)", "amount": 0.0, "note": "Smartphones for Individual Ownership Tablets for Digital Skills Training Tech Camera Kits Device Protection & Maintenance Coordination & Training Support"}, {"id": "2.2.1.7", "orig": "2.2.1.5:", "name": "Organize workshops for linking winners with financial institutions, accelerators, and markets (matchmaking events)", "amount": 0.0, "note": "Venue & Logistics USD 500 for USD 200*2 days = USD 400 plus branding and signage = USD 100 Coffe break, lunch, soft drinks: USD 10*80 persons in 2 day = USD 1600 Facilitation & Moderation USD 100*2 days = USD 200 Materials & Documentation USD 200"}]}]}, {"id": "2.3", "name": "Post competition support", "amount": 1295000.0, "items": [{"id": "2.3.1", "orig": "2.3.1", "name": "Performance-Based grant Disbursement (Phased Approach", "amount": 1295000.0, "acts": [{"id": "2.3.1.1", "orig": "2.3.1.1:", "name": "Fund Disbursement in tranches based on verified performance results (Phase 1)", "amount": 395000.0, "note": "Desboursement of 30% = 395,000 for 3000 vulnerable youth"}, {"id": "2.3.1.2", "orig": "2.3.1.2:", "name": "Fund Disbursement in tranches based on verified performance results (Phase 2)", "amount": 900000.0, "note": "Desboursement of 70% = 900,000 for 3000 vulnerable youth"}, {"id": "2.3.1.3", "orig": "2.3.1.3", "name": "Aftercare Coaching and Business Development Services", "amount": 0.0, "note": "Six month aftercare coaching and BDSs include Field Visits and home visits: USD 3000; workshop for best performers: USD8000; and individual and group coaching/mentorship: USD 6000 (to be implimented by a service provider)"}]}]}]}, {"id": "3", "name": "Strengthening Digital Systems, Institutional capacities & Project Management", "amount": 629999.99, "subs": [{"id": "3.1", "name": "Systems and Capacity Building  US$217,772)", "amount": 217768.14, "items": [{"id": "3.1.1", "orig": "3.1.1", "name": "Enhance harmonization of job portals, Kora portal, INGAZI digital job matching.) and integrations with the LMIS and access by youth", "amount": 76445.0, "acts": [{"id": "3.1.1.1", "orig": "3.1.1", "name": "Conduct functional assessment and integration capability for Kora job portal and Ingazi platform", "amount": 0.0, "note": ""}, {"id": "3.1.1.2", "orig": "3.1.1.2", "name": "Enhance systems to track youth employment trend through dashboard integration with Ingazi platform", "amount": 73949.0, "note": "1 Company consultancy fee"}, {"id": "3.1.1.3", "orig": "3.1.1", "name": "Deliver training to the system users on data sharing, standard reporting template and youth employment tracking", "amount": 2496.0, "note": "Training of users:Venue & Logistics; transport facilitation for digital agents in CoK; participant transport allowances Catering refreshments for eight sessions per annum involving 40 people each*5 USD/per person=1,850 Participants transport fees: 16 people*USD 7* 8 times=USD 1,150"}, {"id": "3.1.1.4", "orig": "3.1.1.4:", "name": "Hold feedback survey to assess accessibility and user satisfaction of the system", "amount": 0.0, "note": ""}]}, {"id": "3.1.2", "orig": "3.1.2", "name": "Effective project management and SPIU enhancement", "amount": 139323.14, "acts": [{"id": "3.1.2.1", "orig": "3.1.2.1:", "name": "Recruit MIFOTRA SPIU staff on youth employment policies, program design (Senior Software developer/Equivalent of Sector specialist and M&E Specialist)", "amount": 136323.33, "note": "Senior Software developer salary: USD 1,832.413*36 months = USD 65,966.876 Senior Software developer communication allowance: USD 76.208*36 = USD 2,743.488 M&E specialis salaryt: USD 1,832.413*36 = USD 65,966.876 M&E Specialist communication allowance: USD 60.966*36 = USD 2,194.790"}, {"id": "3.1.2.2", "orig": "3.1..2.2:", "name": "Ensure monitoring and evaluation of project interventions (transport and living allowances)", "amount": 2999.81, "note": "Car rent for USD 5.08 Per day for 36 months"}, {"id": "3.1.2.3", "orig": "3.1.2.4:", "name": "Prepare and review financial reports", "amount": 0.0, "note": ""}]}, {"id": "3.1.3", "orig": "3.1.3", "name": "Enhance capacities of relevant LMIA TWG institutions in digital entrepreneurships & jobs", "amount": 2000.0, "acts": [{"id": "3.1.3.1", "orig": "3.1.2.1", "name": "Organize workshops for inte-governmental coordination , Technical Working Groups, etc. to strengthen alignment, clarify roles and improve implementation coherence", "amount": 2000.0, "note": "USD 35*23 persons in 2.5 days = USD 2,012; Venue: USD 487.5"}]}]}, {"id": "3.2", "name": "Systems and Capacity Building", "amount": 412231.85, "items": [{"id": "3.2.1", "orig": "3.2.1.", "name": "Digital management system for informal-sector workers", "amount": 237543.0, "acts": [{"id": "3.2.1.1", "orig": "3.3.4.1:", "name": "Consultancy to design and develop the system for informal workers", "amount": 233020.0, "note": ""}, {"id": "3.2.1.2", "orig": "3.3.4.2:", "name": "Testing the system and validation", "amount": 2000.0, "note": "21 people*USD 7* 8 times"}, {"id": "3.2.1.3", "orig": "3.3.4", "name": "Deliver training to the system users", "amount": 2523.0, "note": "Go-Live Support Team = USD 1000; Worker Registration Campaign = USD 1000; Employer Outreach = USD 523"}, {"id": "3.2.1.4", "orig": "3.3.4.4:", "name": "Operationalization of the digital management system (included in the above)", "amount": 0.0, "note": ""}]}, {"id": "3.2.2", "orig": "3.2.2.", "name": "Recruit and train COK SPIU staff on youth employment policies, program design", "amount": 174688.85, "acts": [{"id": "3.2.2.1", "orig": "3.2.2.1:", "name": "Recruitment and on boarding SPIU staff (Project Manager and Labour Market Analysis Specialist)", "amount": 174688.85, "note": "Project Mnager salary: USD 2,882.880*36 months = USD 103,783.697 Project Manager communication allowance: USD 76.208*36 = USD 2,743.488 Labor market analysis specialist: USD 1,832.413*36 = USD 65,966.876 Labor market analysis specialist: USD 60.966*36 = USD 2,194.790"}, {"id": "3.2.2.2", "orig": "3.2.2.2:", "name": "Deliver training for the project team (SPIU Staff and Other - covered by SP above", "amount": 0.0, "note": ""}, {"id": "3.2.2.3", "orig": "3.2.2.3:", "name": "Ensure monitoring and evaluation of project interventions (transport and living allowances) - covered by SP above", "amount": 0.0, "note": ""}]}, {"id": "3.2.3", "orig": "3.2.3.", "name": "Develop youth employment/digital entrepreneurship guidelines (will all concerned stakeholders )", "amount": 0.0, "acts": [{"id": "3.2.3.1", "orig": "3.2.1.1:", "name": "Develop youth employment and digital entrepreneurship guidelines in CoK (included in component 1.1.1)", "amount": 0.0, "note": ""}, {"id": "3.2.3.2", "orig": "3.2.1.2:", "name": "Validate guidelines on digital entrepreneurship with selected institutions including MINICOM, MIFOTRA, MINICT, etc. (included in component 1.1.1)", "amount": 0.0, "note": ""}, {"id": "3.2.3.3", "orig": "3.2.1.3:", "name": "Conduct workshop for dissemination and awarness campaign among users (using internal resources)", "amount": 0.0, "note": ""}]}, {"id": "3.2.4", "orig": "3.2.4.", "name": "Strengthening partnership with stakeholders in digital entrepreneurship", "amount": 0.0, "acts": [{"id": "3.2.4.1", "orig": "3.2.3.1:", "name": "Engage potential implementing partners through meeting and knowledge sharing sessions ( YEGO, Local Committees, Training NGOs GRC, etc,) - (budgeted under 1.1.2)", "amount": 0.0, "note": "GRC trainings, Lunch (USD 35/day/per person), Transport of USD 2"}, {"id": "3.2.4.2", "orig": "3.2.3.2:", "name": "Develop partnership proposals and formalize the partnership (MoUs) - already budgeted - SP to lead this", "amount": 0.0, "note": ""}, {"id": "3.2.4.3", "orig": "3.2.3.3:", "name": "Implementation of the MoUs - (to be renegotiated for integration into Govt budget)", "amount": 0.0, "note": ""}]}]}]}];
+
+/* ===================== PLAYERS & SUB-COMPONENTS ===================== */
+const CATS = {
+  lead:{label:"City of Kigali",v:"--k-lead"}, mifotra:{label:"MIFOTRA",v:"--k-mifotra"},
+  gov:{label:"Other government",v:"--k-gov"}, local:{label:"Local & community",v:"--k-local"},
+  contract:{label:"Contracted providers",v:"--k-contract"}, private:{label:"Private sector & finance",v:"--k-private"},
+  digital:{label:"Digital platforms",v:"--k-digital"}
+};
+/* short display labels for sub-subcomponents (full names in Budget tab) */
+const SS_LABEL = {
+ "1.1.1":"Service provider recruitment and outreach delivery","1.1.2":"Validation workshops for skills-gap and entrepreneurship assessments","1.1.3":"Vulnerable youth identification, screening and validation",
+ "1.2.1":"Training modules and tools, developed with key institutions","1.2.2":"Assessment of YEGO hubs and training venues","1.2.3":"Refurbishment of YEGO hubs and selected facilities","1.2.4":"Soft-skills training delivery",
+ "1.3.1":"Apprenticeships and internships in SMEs; access to finance",
+ "2.1.1":"Curriculum, training materials and component delivery","2.1.2":"Entrepreneurship and business-skills training delivery",
+ "2.2.1":"Business support, competition and top-candidate grants",
+ "2.3.1":"Performance-based grant disbursement (phased)",
+ "3.1.1":"Job-portal harmonization (Kora, Ingazi) and LMIS integration","3.1.2":"Project management and MIFOTRA SPIU","3.1.3":"Capacity of LMIA TWG institutions",
+ "3.2.1":"Digital management system for informal-sector workers","3.2.2":"CoK SPIU staff recruitment and training","3.2.3":"Youth employment / digital entrepreneurship guidelines","3.2.4":"Partnerships with digital entrepreneurship stakeholders"
+};
+const SUBS = {
+  "1.1":{c:1,name:"Outreach, targeting & mobilization",out:"Youth informed, assessed and enrolled",
+    steps:["Multi-channel outreach: Car Free Days, Inteko, Umuganda, social media, bulk SMS, volunteers","USSD application (*194#) with national ID; community validation of eligibility","Screening against Imibereho, NEET database and education records","Stratified random selection if oversubscribed; non-selected eligible youth form the control group","Enrollment into location-based cohorts, then orientation","Grievance Redress Committees at sector and district level"]},
+  "1.2":{c:1,name:"Training & mentorship",out:"On- and offline training and mentorship provided",
+    steps:["Foundational skills-gap assessment","Curriculum design with stakeholders, then validation workshop","Minor refurbishment of YEGO hubs","ToT, then Phase 1 soft-skills training (~12 half-days)","SkillCraft skills profiling: certificate and profile","Transport allowance during training: to be discussed"]},
+  "1.3":{c:1,name:"Private sector mobilization & job matching",out:"Youth connected to potential employers and businesses",
+    steps:["Map firms and master craftspersons needing apprentices","Skills-profile-based matching","Employment fairs for project graduates","Continuous counseling for youth and employers","4-month stipends for ≈500 apprentices / interns above a threshold"]},
+  "gate":{c:"g",name:"Stage 2 selection",out:"~3,000 participants selected for entrepreneurship support"},
+  "2.1":{c:2,name:"Practical entrepreneurship & business skills training",out:"Selected participants trained and coached",
+    steps:["Communication, financial literacy, mobile money","Marketing and sales via social media","Digital literacy incl. Ingazi (+Lumina)","Legal and HR basics (registration, permits, VAT)","Hands-on exercises and trade visits"]},
+  "2.2":{c:2,name:"Business plan development & competition",out:"Business plans developed and presented; grants provided",
+    steps:["Business clinics with a standard template","Mentors with the AI business coach on Ingazi (+Lumina) (2–3 months)","Seed funding of about US$125","Blind-review competition → 50–100 top candidates","Enhanced grants US$1,500 / 1,000 / 800"]},
+  "2.3":{c:2,name:"Post-competition support",out:"Business coaching and outcome-based grants provided",
+    steps:["Seed Capital Grant mechanism set up by CoK","Tranche 1 (30%) on verified setup milestones","Verification by documents, digital records, spot checks","Tranche 2 (70%) ≥4 months later","≥6 months aftercare; KPI reporting ≤18 months"]},
+  "3.1":{c:3,name:"MIFOTRA: systems & capacity building",out:"Digital systems integrated; MIFOTRA capacity strengthened",
+    steps:["Functional assessment of Kora and Ingazi","Dashboard integration with Ingazi for youth employment trends; Gateway employment tracking","Inter-governmental coordination workshops","MIFOTRA SPIU staff and M&E"]},
+  "3.2":{c:3,name:"CoK: systems & capacity building",out:"Project managed; M&E and evidence system established",
+    steps:["Digital system for informal-sector workers","CoK SPIU staff","Guidelines on youth employment and digital entrepreneurship","Partnerships and MoUs"]},
+  "gov":{c:3,name:"Governance & oversight",out:"Strategic direction, coordination and fiduciary oversight",
+    steps:["PSC meets biannually; reviews AWPB","TWG meets quarterly","World Bank no-objection and missions","Three-tier GRM"]}
+};
+const SUB_ORDER = ["1.1","1.2","1.3","gate","2.1","2.2","2.3","3.1","3.2","gov"];
+const SUB_SHORT = {"gate":"Gate","gov":"Gov."};
+
+const P = [
+ {id:"cok",cat:"lead",name:"City of Kigali PMU / SPIU",blurb:"Implementing agency. Hosts the Project Management Unit that runs Components 1 and 2 day to day, under the SPIU Coordinator and City Manager.",
+  meta:"Staff: Project Manager, Labour Market Analysis Specialist, Digital Entrepreneurship Specialist, Procurement, FM, M&E, Social and Environmental Safeguards Specialists.",
+  r:{"1.1":[1,["Lead social mobilization, intake, eligibility screening and enrollment","Organize community validation of eligibility with local leaders"]],
+     "1.2":[1,["Coordinate training delivery; oversee training outcomes","Decide whether a transport allowance is paid during training <span class=\"tbc\">[to discuss]</span>"]],
+     "1.3":[1,["Negotiate partnerships with employers (construction, hospitality), with MIFOTRA","Set the stipend threshold f(x, y) for ≈500 youth"]],
+     "gate":[1,["Define track-sorting factors and threshold; run the composite score in the DEVY admin portal"]],
+     "2.1":[1,["Design and oversee the entrepreneurship track"]],
+     "2.2":[1,["Define the competition process and criteria; pay enhanced grants (US$107,000)"]],
+     "2.3":[1,["Operate the Seed Capital Grant mechanism; MoUs with SACCOs","Disburse tranches (US$395,000 + US$900,000)"]],
+     "3.2":[1,["Day-to-day management, procurement, FM, ESF, M&E, reporting","Own the DEVY admin portal and the informal-worker system","GRM Tier 2 (15 working days); handle cases received from MBAZA"]],
+     "gov":[1,["Co-chairs PSC (City Manager); chairs TWG (SPIU Coordinator)"]]}},
+ {id:"psc",cat:"lead",name:"Project Steering Committee",blurb:"Co-chaired by PS MIFOTRA and the City Manager.",r:{"gov":[1,["Strategic guidance; reviews AWPB; meets biannually"]],"2.3":[0,["Oversees the Seed Capital Grant mechanism"]]}},
+ {id:"twg",cat:"lead",name:"Technical Working Group",blurb:"Chaired by the CoK SPIU Coordinator; decides and documents technical choices.",r:{"gov":[1,["Technical backstopping; meets quarterly"]]}},
+ {id:"mifotra",cat:"mifotra",name:"MIFOTRA (SPIU & Ingazi team)",blurb:"Coordinating agency. Sets the youth employment agenda, provides policy oversight and owns the national job platforms that DEVY plugs into.",
+  meta:"SPIU: Labor Market Analyst, Senior Software Developer (DEVY), M&E Specialist. Ingazi IT team: Pacifique, Robert, Benitha.",
+  r:{"1.1":[0,["USSD–SSO working group: national ID capture and Ingazi registration"]],
+     "1.2":[0,["Review the service provider ToR; host training materials on Ingazi if delivery is hybrid"]],
+     "1.3":[0,["Job-matching working group (HR portals, employers, lower-skilled jobs)"]],
+     "2.2":[0,["Offer the Ingazi awards module for the competition <span class=\"tbc\">[TBC]</span>"]],
+     "3.1":[1,["Policy lead, coordination and oversight","Co-build the DEVY youth portal with Ingazi (+Lumina); receive the code","Run the Integration Gateway (SSO, CV / profile store, job data sharing)","Employment tracking via RSSB / PAYE; results to iLMIS"]],
+     "gov":[1,["Co-chairs PSC (Permanent Secretary); TWG member","GRM Tier 3 appeals"]]}},
+ {id:"moya",cat:"gov",name:"MoYA",blurb:"Ministry of Youth and Arts. Oversees YEGO centers and the National Youth Council; digital ambassadors support onboarding; receives project data.",
+  r:{"1.1":[0,["Youth mobilization; digital ambassadors support outreach and onboarding"]],"1.2":[0,["Consulted on curriculum"]],"1.3":[0,["Links to hubs and programmes (with RISA)"]],"2.2":[0,["Reference: MoYA business competition module, to avoid duplication"]],"gov":[0,["PSC and TWG member; receives programme data"]]}},
+ {id:"minaloc",cat:"gov",name:"MINALOC",blurb:"Guides decentralized coordination; owns the Imibereho social registry and the MBAZA citizen platform.",
+  r:{"1.1":[0,["Imibereho lookup: applicant ID → household head → household income","District and sector coordination"]],"1.3":[0,["MINALOC demand-mapping database as a job source"]],"gov":[0,["PSC member; MBAZA platform as youth grievance channel"]]}},
+ {id:"rtb",cat:"gov",name:"RTB",blurb:"Quality assurance and certification of training.",r:{"1.2":[1,["Curriculum QA, certification, trainer accreditation"]],"gov":[0,["PSC and TWG member"]]}},
+ {id:"rp",cat:"gov",name:"Rwanda Polytechnic",blurb:"Module development and competency-based training.",r:{"1.2":[0,["Module development"]],"2.1":[0,["Digital entrepreneurship training"]],"gov":[0,["PSC and TWG member"]]}},
+ {id:"risa",cat:"gov",name:"RISA",blurb:"Guides system design and interoperability.",r:{"1.2":[0,["Module validation"]],"3.1":[0,["System architecture and interoperability guidance"]],"gov":[0,["PSC and TWG member"]]}},
+ {id:"minict",cat:"gov",name:"MINICT",blurb:"Digital governance, cybersecurity, innovation.",r:{"1.2":[0,["Consulted on curriculum"]],"2.1":[0,["Innovation challenges, bootcamps"]],"3.1":[0,["Data governance and cybersecurity"]],"gov":[0,["PSC and TWG member"]]}},
+ {id:"minicom",cat:"gov",name:"MINICOM · RDB",blurb:"Entrepreneurship, SMEs, market linkages, business registration.",r:{"1.2":[0,["Consulted on curriculum"]],"2.1":[0,["Formalization guidance"]],"2.3":[0,["Market linkages; RDB data for competition eligibility and milestone checks"]],"gov":[0,["PSC member"]]}},
+ {id:"minecofin",cat:"gov",name:"MINECOFIN / BNR",blurb:"Borrower; fund flow through the National Bank of Rwanda.",r:{"gov":[1,["Designated Accounts at BNR; financial reporting"]]}},
+ {id:"oversight",cat:"gov",name:"RPPA · OAG",blurb:"Procurement oversight and external audit.",r:{"gov":[0,["Umucyo e-procurement; annual audits"]]}},
+ {id:"wb",cat:"gov",name:"World Bank (JSDF trustee)",blurb:"Administers the grant; supports implementation and the impact evaluation.",
+  r:{"gov":[1,["No-objection, semiannual missions, US$270,000 technical support"]],"1.1":[0,["Design of stratified randomization and control group with IPA"]],"3.2":[0,["Impact evaluation with IPA; IRB submission"]]}},
+ {id:"local",cat:"local",name:"District, sector, cell & village leaders",blurb:"Decentralized structures for outreach, verification and coordination.",r:{"1.1":[0,["Community validation of eligibility; residence certification","Inteko and Umuganda sessions"]]}},
+ {id:"vol",cat:"local",name:"Volunteers · para-social workers · NYC/PWD reps",blurb:"Community workers who reach youth who would not otherwise apply.",r:{"1.1":[0,["Door-to-door sensitization; help youth dial *194# and apply"]]}},
+ {id:"grc",cat:"local",name:"Grievance Redress Committees",blurb:"Sector and district GRCs.",r:{"1.1":[0,["Acknowledge within 3 working days; resolve simple cases within 7"]],"gov":[0,["GRM Tier 1"]]}},
+ {id:"bda",cat:"local",name:"BDAs · YEGO coordinators · PEC staff",blurb:"Frontline business and employment advisors.",r:{"1.2":[0,["ToT trainees (70 BDAs, 70 champions, 22 hub staff)"]],"1.3":[0,["Counseling for youth and employers"]],"2.3":[0,["≥6 months aftercare coaching; BDA assignment logged in the admin portal"]]}},
+ {id:"sp",cat:"contract",name:"Service provider (implementation firm)",blurb:"The main contracted delivery partner for Components 1 and 2, procured by CoK under an output-based contract.",
+  meta:"PPSD: US$965,371 · QCBS, national · 3 years. Gantt: recruitment Oct–Dec 2026. Budget lines 1.1.1.1 (US$367,371) and 2.1.1.1 (US$598,000).",
+  r:{"1.1":[1,["Outreach, communications and mobilization (1.1.1.1)","Orientation plan and enrollment support"]],
+     "1.2":[1,["Develop modules; deliver in-person soft-skills training","Mobile attendance; learning materials; M&E of training"]],
+     "1.3":[1,["1–2 days of training on using Ingazi","Map SMEs; link youth via fairs; pay 4-month stipends (≈500)","Tracer surveys and validation workshops"]],
+     "gate":[0,["Validation workshop for the entrepreneurship list (1.2.4.4)"]],
+     "2.1":[1,["Component delivery (2.1.1.1); in-person BDS and mentoring; ToTs"]],
+     "2.2":[1,["Business clinics, blind reviews, due diligence on winners"]],
+     "2.3":[0,["Aftercare coaching and BDS; milestone verification"]]}},
+ {id:"cons",cat:"contract",name:"Individual consultant (skills-gap assessment)",blurb:"Assesses foundational skills gaps and establishes SkillCraft and Lumina tools.",
+  meta:"Budget 1.1.1.3: US$8,000 · Gantt: assessment Jan–Feb 2027.",r:{"1.1":[1,["Assess foundational skills gaps (1.1.1.3)"]]}},
+ {id:"works",cat:"contract",name:"Works contractor (YEGO hub refurbishment)",blurb:"Minor, non-structural refurbishment of training venues.",
+  meta:"Budget 1.2.3.1: US$20,629 · Gantt: procurement Oct–Dec 2026, works Jan–Mar 2027.",r:{"1.2":[1,["PWD access, WASH, safe rooms, connectivity, painting; maintenance in defect period"]]}},
+ {id:"itfirm",cat:"contract",name:"IT firm (informal-worker system)",blurb:"Designs and develops the CoK digital management system for informal-sector workers.",
+  meta:"Budget 3.2.1.1: US$233,020 · line 3.2.1 total US$237,543 · Gantt: recruitment Oct–Dec 2026. Whether it also builds the DEVY admin portal is <span class=\"tbc\">[TBC]</span>.",
+  r:{"3.2":[1,["Design, build, test and validate the system","Train users; support go-live and worker registration"]]}},
+ {id:"mcons",cat:"contract",name:"Consultant: job portals & dashboard",blurb:"Hired by MIFOTRA to enhance youth-employment tracking through dashboard integration with Ingazi.",
+  meta:"Budget 3.1.1.2: US$73,949 · line 3.1.1 total US$76,445.",r:{"3.1":[1,["Functional assessment of Kora and Ingazi","Dashboard integration with Ingazi"]]}},
+ {id:"devteam",cat:"contract",name:"DEVY USSD developers & WB Lumina team",blurb:"Two programmers recruited for the USSD app; the World Bank-funded Lumina team co-develops the Ingazi (+Lumina) code with MIFOTRA.",
+  meta:"Code is built as a public good and handed to MIFOTRA; legal agreement or MoU pending.",
+  r:{"1.1":[0,["Build the *194# USSD application"]],"3.1":[0,["Co-develop Ingazi (+Lumina) in weekly build sessions; hand over source code"]]}},
+ {id:"mentors",cat:"contract",name:"Mentors",blurb:"Guide participants in turning concepts into market-ready plans.",
+  r:{"2.2":[0,["Mentor through business clinics, supported by the AI business coach"]],"2.3":[0,["Continue mentorship after the competition"]]}},
+ {id:"firms",cat:"private",name:"Employers, SMEs & master craftspersons",blurb:"Host apprentices and interns; hire graduates.",r:{"1.2":[0,["Input to curriculum"]],"1.3":[1,["Host ≈500 apprentices/interns for 4 months; verify participation for stipends"]]}},
+ {id:"psf",cat:"private",name:"PSF & sector associations",blurb:"Private Sector Federation and business associations.",r:{"1.3":[0,["Placement network; co-organize fairs"]]}},
+ {id:"panel",cat:"private",name:"Blind-review panels",blurb:"Entrepreneurs, financial institution representatives and incubators.",r:{"2.2":[1,["Blind scoring of business plans (AI-assisted scoring under discussion)"]]}},
+ {id:"fin",cat:"private",name:"SACCOs · MFIs · banks",blurb:"Payment channels for stipends and grants; future finance.",r:{"1.3":[0,["Pay apprenticeship stipends"]],"2.3":[1,["Route tranche payments","Consent-based alternative credit scoring (experimental)"]]}},
+ {id:"accel",cat:"private",name:"Accelerators & research partners",blurb:"UR, ALU, DOT Rwanda, Resonate, Jasiri, BK Tech, Smart Africa; IPA and NISR for research.",r:{"2.3":[0,["Incubation support"]],"3.2":[0,["MoUs; tracer studies; impact evaluation data"]]}},
+ {id:"admin",cat:"digital",kv:"--s-devy",name:"DEVY admin portal",blurb:"CoK programme MIS for intake, selection, training management, stipends, grants, M&E and grievances; MIFOTRA may reuse parts.",
+  r:{"1.1":[1,["Applicant registry; eligibility screening; priority targeting","Stratified random selection; cohorts; control group"]],"1.2":[0,["Training management and mobile attendance (data y)"]],"1.3":[0,["Stipend management (≈500, 4 months)"]],"gate":[1,["Business idea assessment (data z); composite score f(x, y, z)"]],"2.3":[0,["Grant management with milestone checks; aftercare logs"]],"3.2":[1,["M&E tracking, dashboards, grievance case management"]]}},
+ {id:"ingazi",cat:"digital",kv:"--s-ingazi",name:"Ingazi (+Lumina)",blurb:"MIFOTRA's youth-facing job and training platform with the Lumina modules co-built in (SkillCraft, AI career mentor, AI business coach). 120,000+ users.",
+  r:{"1.1":[0,["Awards module as an alternative web intake <span class=\"tbc\">[TBC]</span>","SkillCraft for the control group"]],"1.2":[0,["Registration during training; SkillCraft (data x); track navigator"]],"1.3":[0,["CV building, job matching, AI career mentor, Skilling & Career Portal"]],"gate":[0,["SkillCraft score feeds the composite"]],"2.1":[0,["AI business coach"]],"2.2":[0,["Business plan competition on the awards module <span class=\"tbc\">[TBC]</span>"]],"3.1":[0,["Pilot of the future Ingazi"]]}},
+ {id:"gw",cat:"digital",kv:"--s-gw",name:"MIFOTRA Integration Gateway",blurb:"SSO and unified profile, CV / profile store, job data sharing, employment tracking. Phase 2 build; no live data yet.",r:{"1.2":[0,["SSO + unified profile from the national ID"]],"1.3":[0,["CV / profile store; job data via DSAs"]],"3.1":[1,["Employment tracking via RSSB / PAYE"]]}},
+ {id:"natdb",cat:"digital",name:"National DBs",blurb:"National Data Center, MNO SIM KYC, Imibereho, NIDA, RDB, RSSB.",r:{"1.1":[0,["SIM KYC, Imibereho household income, National Data Center storage"]],"2.2":[0,["NIDA and RDB checks for competition eligibility"]]}},
+ {id:"ilmis",cat:"digital",name:"iLMIS",blurb:"MIFOTRA's labour market information system; receives DEVY results directly.",r:{"3.1":[0,["Programme results and job-matching outcomes"]]}}
+];
+const PM = Object.fromEntries(P.map(p=>[p.id,p]));
+
+/* ===================== JOURNEYS ===================== */
+const JB = [
+ {id:"j-intake",grp:"s1",n:"1",t:"Intake",img:"img/intake.webp",alt:"Two young people beside a phone showing *194#",
+  txt:"Apply by dialing <b>*194#</b> with your national ID. Eligible youth are selected, by lottery if there are more than 9,000, and assigned to a training cohort.",
+  facts:["Nov–Dec 2026","USSD *194#","National ID"],p:["cok","vol","local","sp"]},
+ {id:"j-train",grp:"s1",n:"2",t:"Foundational Training",img:"img/training.webp",alt:"A trainer presenting soft and digital skills to two youth",
+  txt:"<b>9,000</b> participants build job-related soft skills and digital skills in person, and register on Ingazi during training.",
+  facts:["May–Sep 2027","3 batches × 2 cohorts","Transport allowance: to discuss"],p:["sp","bda","rtb"]},
+ {id:"j-profile",grp:"s1",n:"3",t:"Skills Profiling",img:"img/profiling.webp",alt:"Youth reviewing an AI-generated skills profile",
+  txt:"SkillCraft on Ingazi (+Lumina) gives each participant an AI-driven profile of job-related strengths and interests.",
+  facts:["Sep 2027","SkillCraft","Certificate"],p:["sp","cok"]},
+ {id:"j-wage",grp:"sa",n:"A",t:"Wage Employment Track",img:"img/wage.webp",alt:"A young worker in a safety vest with tools",
+  txt:"All wage-track youth use Ingazi for CVs, job matching and an AI career mentor. About <b>500</b> above the threshold get a <b>4-month</b> stipend for an apprenticeship or internship.",
+  facts:["Sep 2027 – Mar 2028","≈500 × 4 months","US$204,000"],p:["sp","firms","psf","fin"]},
+ {id:"j-entre",grp:"sb",n:"B1",t:"Entrepreneurship Track",img:"img/entrepreneurship.webp",alt:"Youth working on a business plan for an innovation competition",
+  txt:"Up to <b>3,000</b> youth take business-skills training with mentoring and an AI business coach, write a business plan and compete.",
+  facts:["Phase 2 training Sep & Nov 2027","Top ≤100: +US$800–1,500"],p:["sp","mentors","panel","cok"]},
+ {id:"j-bizdev",grp:"sb",n:"B2",t:"Business Development",img:"img/bizdev.webp",alt:"A young entrepreneur receiving a seed grant, then coaching",
+  txt:"A US$500 seed grant paid in milestone tranches, plus at least <b>6 months</b> of aftercare coaching and business support.",
+  facts:["30% + 70%","≥6 months aftercare","Reporting ≤18 mo"],p:["fin","bda","minicom","cok"],caveat:true}
+];
+/* Gantt ver.18Sep: month index 0 = Oct 2026 … 26 = Dec 2028 */
+const MONTHS=(()=>{const n=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];const o=[];for(let i=0;i<27;i++){const m=(9+i)%12,y=2026+Math.floor((9+i)/12);o.push({m:n[m],y})}return o})();
+const GANTT_YOUTH=[
+ ["Intake & selection","c1",[[1,2]]],
+ ["Phase 1 training · batch 1","c1",[[7,8]]],["Phase 1 training · batch 2","c1",[[9,10]]],["Phase 1 training · batch 3","c1",[[10,11]]],
+ ["Skills profile created","gate",[],[11]],
+ ["Apprenticeships (4 months each)","c1",[[11,17]]],
+ ["Phase 2 training · batch 1 / 2","c2",[[11,11],[13,13]]],
+ ["Tracer study: baseline · endline · final report","c3",[],[11,23,26]]
+];
+const GANTT_ADMIN=[
+ ["Recruit service provider, IT firm, refurbishment contractor, LMA","c3",[[0,2]]],
+ ["Staffing","c3",[[1,2]]],
+ ["Intake process","c1",[[1,2]]],
+ ["Refurbishment works","c3",[[3,5]]],
+ ["Skills-gap assessment","c3",[[3,4]]],
+ ["Curriculum","c3",[[4,6]]],
+ ["Phase 1 training (3 batches)","c1",[[7,11]]],
+ ["Apprenticeships","c1",[[11,17]]],
+ ["Phase 2 training","c2",[[11,11],[13,13]]],
+ ["Tracer study → MIFOTRA","c3",[],[11,23,26]]
+];
+
+const SYS = [
+ {id:"ussd",name:"USSD *194#",v:"--s-gov"},{id:"admin",name:"DEVY admin portal",v:"--s-devy"},{id:"ingazi",name:"Ingazi (+Lumina)",v:"--s-ingazi"},
+ {id:"gw",name:"Gateway",v:"--s-gw"},{id:"natdb",name:"National DBs",v:"--s-gov"},{id:"pay",name:"Payment channels",v:"--s-data"},{id:"ilmis",name:"iLMIS",v:"--k-mifotra"}
+];
+const SYSM = Object.fromEntries(SYS.map(s=>[s.id,s]));
+const AJ = [
+ {id:"a0",t:"Set up teams and systems",when:"Oct 2026 – Apr 2027",who:"CoK PMU · MIFOTRA SPIU (Sr. developer) · Ingazi team · WB Lumina team · IT firm",
+  act:["Recruit the service provider, IT firm, refurbishment contractor and staff (Oct–Dec 2026)","Build the *194# USSD app and the DEVY admin portal","Co-build the DEVY youth portal on Ingazi (+Lumina) in weekly sessions","Agree data-sharing for the National DBs (National Data Center, MNO, Imibereho, RSSB) and define user roles"],
+  data:"Configuration: quotas, cohorts, venues, scoring rules, consent text",sys:{ussd:2,admin:2,ingazi:2,gw:1,natdb:1},
+  open:"Legal agreement / MoU for code handover"},
+ {id:"a1",t:"Run intake",when:"Nov – Dec 2026",who:"CoK PMU · service provider · MoYA digital ambassadors",
+  act:["Launch the USSD *194# campaign","Applicant registry pulls USSD answers and SIM KYC (ID, name, DOB, location) from the National Data Center","Track application volume by location, sex and disability"],
+  data:"Applicant registry",sys:{ussd:2,admin:2,natdb:2,ingazi:1},open:"Intake channel: USSD + SIM KYC (default) or Ingazi awards module web intake"},
+ {id:"a2",t:"Select participants",when:"Nov – Dec 2026",who:"CoK PMU · local leaders · World Bank / IPA",
+  act:["Eligibility screening: age, residence, NEET, education; household income from Imibereho","Community validation of eligibility","Priority targeting: 50%+ women, 5%+ PwD","Stratified random selection if eligible applicants exceed 9,000; waitlist for drop-outs","Selected → cohorts and orientation; not selected → control group, invited to SkillCraft"],
+  data:"Eligibility results, selection list, waitlist, control group",sys:{admin:2,natdb:2,ingazi:1},open:"Imibereho lookup via household head ID; community validation method; randomization method"},
+ {id:"a3",t:"Manage Phase 1 and sort tracks",when:"May – Sep 2027",who:"Service provider · CoK PMU · TWG",
+  act:["Record mobile attendance (data y)","Register youth on Ingazi with SSO during training","Collect SkillCraft scores (data x) and business-idea scores (data z)","Composite score f(x, y, z) above threshold → entrepreneurship (≤3,000); others → wage track"],
+  data:"Attendance, SkillCraft scores, business-idea scores, track lists",sys:{admin:2,ingazi:2,gw:2},open:"Other track-sorting factors; training materials on Ingazi (physical vs hybrid)"},
+ {id:"a4",t:"Run the wage employment track",when:"Sep 2027 – Mar 2028",who:"Service provider · MIFOTRA job-matching team · employers",
+  act:["Select ≈500 youth with f(x, y) above threshold for a 4-month stipend","Send stipend payment instructions to banks / SACCOs","Keep CVs and profiles (with SkillCraft score) in the Gateway; bring in jobs through data-sharing agreements","Follow job-search activity of non-stipend youth through the Career Portal"],
+  data:"Stipend list and payments, placements, CVs, job-search activity",sys:{admin:2,ingazi:2,gw:2,natdb:1,pay:2},open:"CV builder and job-matching module"},
+ {id:"a5",t:"Run the entrepreneurship track",when:"Sep 2027 onward",who:"CoK PMU · service provider · review panels · SACCOs/banks",
+  act:["Record BDS training attendance","Manage grants: US$500 for all, US$800–1,500 extra for the top ≤100, tranches with milestone checks","Assign BDAs and log aftercare coaching","Run the business plan competition (eligibility via NIDA and RDB)"],
+  data:"Attendance, competition scores, milestone evidence, tranche payments, coaching logs",sys:{admin:2,ingazi:1,natdb:1,pay:2},open:"Competition on the Ingazi awards module; alternative credit scoring pilot"},
+ {id:"a6",t:"Monitor, track and report",when:"Throughout · tracer Sep 2027, Sep 2028, Dec 2028",who:"CoK M&E · MIFOTRA M&E · World Bank / IPA",
+  act:["Dashboards and reports by gender, disability and age group","Track KPIs and run the tracer study","Handle grievance cases received from MBAZA","Track employment through RSSB pension and PAYE records via the Gateway","Share programme results and job-matching outcomes directly with iLMIS"],
+  data:"Indicators, tracer data, grievance cases, employment status",sys:{admin:2,ingazi:1,gw:2,natdb:1,ilmis:2},open:"Gateway not live yet; indicators and frequency for iLMIS; MBAZA case handover"}
+];
+
+/* ===================== ARCHITECTURE (DEVY System Integration Discussion, 1 Oct 2026) ===================== */
+const ASTAGES=[["intake","① Intake","USSD *194#"],["sel","② Selection","Random selection if eligible n > 9,000"],["p1","③ Phase 1","Job-market readiness · 9,000 youth"],["wage","④ Phase 2 · Wage track","f(x, y) > threshold: stipend (n ≈ 500)"],["ent","⑤ Phase 2 · Entrepreneurship","n ≤ 3,000 · top n ≤ 100 enhanced grant"],["mon","⑥ Monitoring & tracking","All participants"]];
+const ALAYERS=[
+ ["youth","Youth touchpoints","--s-gov",""],
+ ["devy","DEVY admin portal","--s-devy","CoK programme MIS · build"],
+ ["ingazi","Ingazi (+Lumina)","--s-ingazi","Youth-facing · reuse / co-build"],
+ ["gw","MIFOTRA Integration Gateway","--s-gw","Phase 2 build · no live data yet"],
+ ["ext","National DBs & external systems","--s-gov",""]
+];
+const ALM=Object.fromEntries(ALAYERS.map(l=>[l[0],l]));
+const ASM=Object.fromEntries(ASTAGES.map(s=>[s[0],s]));
+/* [id, layer, stage, title, desc, tags] tags: todo | x | y | z */
+const AMODS=[
+ ["y-ussd","youth","intake","USSD *194# (feature phone)","Applies via the USSD campaign; no internet needed"],
+ ["y-web","youth","intake","Web application page","Only if the Ingazi awards module is used for intake",["todo"]],
+ ["y-train","youth","p1","In-person soft-skills training","Service provider (CoK-procured); youth register on Ingazi during training"],
+ ["y-ingw","youth","wage","Ingazi web / app (wage)","1–2 days of in-person training on using Ingazi"],
+ ["y-bds","youth","ent","In-person BDS & mentoring","Service provider"],
+ ["y-inge","youth","ent","Ingazi web / app (business)","Including AI business coaching"],
+ ["d-reg","devy","intake","Applicant registry","Pulls USSD answers + SIM KYC from the National Data Center"],
+ ["d-elig","devy","sel","Eligibility screening","Age 18–34 (16–17 by exception), residence, NEET, education ← USSD; household income ← Imibereho"],
+ ["d-prio","devy","sel","Priority targeting","50%+ women, 5%+ PwD"],
+ ["d-rand","devy","sel","Stratified random selection","If eligible n > 9,000 · waitlist for drop-outs"],
+ ["d-cohort","devy","sel","Cohort formation & orientation","Selected youth · centre / batch assignment"],
+ ["d-ctrl","devy","sel","Control group","Not selected → impact evaluation; also takes SkillCraft"],
+ ["d-att","devy","p1","Training mgmt & attendance","Sessions, service provider, mobile attendance",["y"]],
+ ["d-idea","devy","p1","Business idea assessment","Youth interested in entrepreneurship",["z"]],
+ ["d-score","devy","p1","Composite scoring & track sorting","f(x, y, z) > threshold → entrepreneurship (≤3,000); others → wage track; other factors to be defined by CoK"],
+ ["d-stip","devy","wage","Stipend management","f(x, y) > threshold (≈500); 4-month stipend; payment instructions"],
+ ["d-batt","devy","ent","BDS training & attendance","Same modules as Phase 1"],
+ ["d-grant","devy","ent","Grant management","US$500 to all (≤3,000); US$800–1,500 to top ≤100; tranches + milestone checks"],
+ ["d-after","devy","ent","Aftercare coaching & support","BDA assignment, coaching logs"],
+ ["d-me","devy","mon","M&E tracking","KPIs, tracer study (baseline / endline); job-search outcomes of non-stipend wage-track youth"],
+ ["d-grm","devy","mon","Grievance case management","Cases received from MBAZA"],
+ ["d-dash","devy","mon","Dashboards & reports","By gender, disability, age group"],
+ ["i-awards","ingazi","intake","Awards module (intake)","Web intake; national ID typed in; alternative to USSD",["todo"]],
+ ["i-skctrl","ingazi","sel","SkillCraft for control group","Eligible non-selected youth (impact evaluation baseline)"],
+ ["i-reg","ingazi","p1","Ingazi registration","During training · SSO with national ID"],
+ ["i-skill","ingazi","p1","SkillCraft","Soft-skills assessment at the end of training",["x"]],
+ ["i-nav","ingazi","p1","Track navigator","Fit for wage vs entrepreneurship track"],
+ ["i-mat","ingazi","p1","Training materials","Upload depends on fully physical vs hybrid delivery",["todo"]],
+ ["i-cv","ingazi","wage","CV building","Ingazi CV builder or AI CV generator; includes SkillCraft score",["todo"]],
+ ["i-match","ingazi","wage","Job matching","Which engine; HR-portal jobs via data-sharing agreements",["todo"]],
+ ["i-mentor","ingazi","wage","AI career mentor","Career Explorer + Pathway Navigator"],
+ ["i-portal","ingazi","wage","Skilling & Career Portal","Job search; activity feeds monitoring"],
+ ["i-coach","ingazi","ent","AI business coach","Personal Initiative, Business Foundations, plan builder, course recommendations, networking"],
+ ["i-comp","ingazi","ent","Business plan competition","Awards module (NIDA, RDB eligibility, rubrics, stages); refer to MoYA module; AI-assisted scoring",["todo"]],
+ ["i-credit","ingazi","ent","Alternative credit scoring","Consent-based; experimental"],
+ ["i-activity","ingazi","mon","Career Portal activity","Job-search activity of wage-track youth"],
+ ["g-sso","gw","p1","SSO + unified profile","National ID → one account across platforms"],
+ ["g-cv","gw","wage","CV / profile data store","All jobseeker CVs & profiles, incl. SkillCraft score"],
+ ["g-jobs","gw","wage","Job data sharing","HR portals & job sources via data-sharing agreements"],
+ ["g-emp","gw","mon","Employment tracking","RSSB pension & PAYE records by national ID"],
+ ["e-ndc","ext","intake","National Data Center","CoK stores USSD application data here"],
+ ["e-mno","ext","intake","MNO SIM KYC","MTN, Airtel: national ID, name, DOB, location"],
+ ["e-imib","ext","sel","Imibereho","Social registry: applicant ID → household head → household income"],
+ ["e-comm","ext","sel","Community validation","Local verification of eligibility"],
+ ["e-jobs","ext","wage","Job sources","IPPIS E-Recruitment & Internship Portal, HR portals, lower-skilled job portal, MINALOC map"],
+ ["e-payw","ext","wage","Payment channels","Banks, SACCO / MFI (stipends)"],
+ ["e-paye","ext","ent","Payment channels","Banks, SACCO / MFI (grants)"],
+ ["e-rdb","ext","ent","RDB · NIDA · financial institutions","Competition eligibility; credit scoring"],
+ ["e-ilmis","ext","mon","iLMIS","Programme results & job-matching outcomes (shared directly)"],
+ ["e-mbaza","ext","mon","MBAZA (MINALOC)","Youth grievance channel"]
+];
+const AMM=Object.fromEntries(AMODS.map(m=>[m[0],m]));
+const AFLOWS=[
+ ["y-ussd","e-ndc","application data"],["e-ndc","d-reg","USSD answers"],["e-mno","d-reg","SIM KYC"],
+ ["y-web","i-awards","web intake"],["i-awards","d-reg","applications (if used)"],
+ ["d-reg","d-elig","applicants"],["e-imib","d-elig","household income"],["e-comm","d-elig","local verification"],
+ ["d-elig","d-prio","eligible"],["d-prio","d-rand","priority lists"],["d-rand","d-cohort","selected (9,000)"],["d-rand","d-ctrl","not selected"],["d-ctrl","i-skctrl","SkillCraft baseline"],
+ ["d-cohort","y-train","cohorts"],["y-train","d-att","mobile attendance"],["y-train","i-reg","register in training"],["g-sso","i-reg","SSO with national ID"],["i-mat","y-train","materials (if hybrid)"],
+ ["i-reg","i-skill","account"],["i-skill","i-nav","scores"],["i-skill","d-score","data x"],["d-att","d-score","data y"],["d-idea","d-score","data z"],
+ ["d-score","d-stip","f(x, y) > threshold"],["d-score","y-ingw","wage track"],["d-score","y-bds","entrepreneurship track"],
+ ["y-ingw","i-cv","builds CV"],["i-cv","g-cv","CV / profile"],["e-jobs","g-jobs","jobs via DSAs"],["g-jobs","i-match","vacancies"],["g-cv","i-match","profiles"],["y-ingw","i-portal","job search"],["i-match","i-mentor","career advice"],["d-stip","e-payw","payment instructions"],
+ ["y-bds","d-batt","attendance"],["y-inge","i-coach","AI coaching"],["e-rdb","i-comp","eligibility (NIDA, RDB)"],["i-comp","d-grant","winners (top ≤100)"],["d-grant","e-paye","tranches"],["d-grant","d-after","aftercare"],["e-rdb","i-credit","credit data"],
+ ["i-portal","i-activity","activity"],["i-activity","d-me","job-search outcomes"],["g-emp","d-me","employment status"],["d-me","d-dash","indicators"],["e-mbaza","d-grm","grievance cases"],["d-me","e-ilmis","results, matching outcomes"]
+];
+const ADECIDE=[
+ ["Intake channel","Intake","USSD + MNO SIM KYC (current default) vs Ingazi awards module web intake (national ID typed in)","USSD–SSO working group (MIFOTRA, WB, CoK)",["y-web","i-awards"]],
+ ["Track-sorting factors","Phase 1","Factors other than SkillCraft score, attendance and business idea","CoK",["d-score"]],
+ ["Training materials on Ingazi","Phase 1","Upload if hybrid delivery; not needed if fully physical","CoK + service provider (ToR); MIFOTRA reviews",["i-mat"]],
+ ["CV building","Phase 2 (wage)","Ingazi CV builder + Lumina AI CV generator; CV / profile (incl. SkillCraft score) kept in the Gateway","Weekly build sessions (WB, UNICEF, Ingazi team)",["i-cv"]],
+ ["Job matching","Phase 2 (wage)","Ingazi vs Lumina prototype; HR-portal jobs via data-sharing agreements; lower-skilled job sources","Job-matching working group (MIFOTRA, WB)",["i-match"]],
+ ["Business plan competition","Phase 2 (ent.)","Ingazi awards module; refer to MoYA competition module; AI-assisted scoring; process and criteria","CoK",["i-comp"]],
+ ["Alternative credit scoring","Phase 2 (ent.)","Consent-based, experimental, with financial institutions: pilot or not","World Bank + CoK",["i-credit"]]
+];
+const ACHECKS=["Imibereho lookup via household head ID: availability confirmed?","Community validation: who, how, when?","Randomization and waitlisting method","Employment tracking via RSSB / PAYE: Gateway not live yet","Which indicators go to iLMIS, and how often?","MBAZA → DEVY grievance case handover"];
+
+let archSel=null, archLayer=null;
+function renderArch(){
+  const tag=t=>t==="todo"?`<span class="mtag todo">?</span>`:`<span class="mtag data">${t}</span>`;
+  const cell=(l,s)=>{const ms=AMODS.filter(m=>m[1]===l&&m[2]===s);return ms.map(m=>`<button class="achip${(m[5]||[]).includes("todo")?" dashed":""}" data-m="${m[0]}" style="--lc:var(${ALM[l][2]})"><span>${m[3]}</span>${m[5]?m[5].map(tag).join(""):""}</button>`).join("")};
+  const grid=`<div class="ag2" id="ag2">
+    <svg class="aflow" id="aflow" aria-hidden="true"><defs>
+      <marker id="am0" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--muted)"/></marker>
+      <marker id="am1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--fg)"/></marker></defs><g id="aedges"></g><g id="alabels"></g></svg>
+    <div class="ah0"></div>${ASTAGES.map(([k,t,sub])=>`<div class="ah"><b>${t}</b><span>${sub}</span></div>`).join("")}
+    ${ALAYERS.map(([l,name,v,sub])=>`<button class="al" data-layer="${l}" style="--lc:var(${v})"><b>${name}</b>${sub?`<span>${sub}</span>`:""}</button>${ASTAGES.map(([s])=>`<div class="ac" data-l="${l}" style="--lc:var(${v})">${cell(l,s)}</div>`).join("")}`).join("")}
+  </div>`;
+  $("#archBody").innerHTML=`
+  <p class="intro">Module architecture by project stage, following the DEVY System Integration Discussion deck (1 Oct 2026). DEVY is the reference; where Ingazi (+Lumina) or the Gateway already has a function, DEVY connects to it first. Click a module to see its details and connections; everything else fades. Click a layer name to highlight the whole layer.</p>
+  <div class="idflow"><b>National ID = the common key</b><span>SIM KYC (USSD)</span><i>→</i><span>DEVY admin portal</span><i>→</i><span>Imibereho household lookup</span><i>→</i><span>Gateway SSO &amp; Ingazi registration</span><i>→</i><span>RSSB / PAYE employment tracking</span></div>
+  <div class="ag-wrap">${grid}</div>
+  <div class="akey"><span><i style="background:var(--s-devy)"></i>DEVY admin portal</span><span><i style="background:var(--s-ingazi)"></i>Ingazi (+Lumina)</span><span><i style="background:var(--s-gw)"></i>Gateway</span><span><i style="background:var(--s-gov)"></i>Youth touchpoints · National DBs &amp; external</span><span><span class="mtag todo">?</span> dashed = to decide</span><span><span class="mtag data">x</span><span class="mtag data">y</span><span class="mtag data">z</span> track-sorting inputs</span><span>Arrows show the direction data moves</span></div>
+  <div class="panel" style="margin-top:22px"><h2>What we need to decide</h2><p class="meta">Open items across all stages, the options on the table and who decides. Click an item to show its module.</p>
+    <div class="tbl-wrap"><table class="t"><thead><tr><th>#</th><th>Item</th><th>Stage</th><th>Options on the table</th><th>Who decides</th></tr></thead><tbody>
+    ${ADECIDE.map((d,i)=>`<tr><td class="mono">${i+1}</td><td><button class="linkish" data-m="${d[4][d[4].length-1]}">${d[0]}</button></td><td>${d[1]}</td><td>${d[2]}</td><td>${d[3]}</td></tr>`).join("")}</tbody></table></div>
+    <div class="eyebrow" style="margin:14px 0 6px">Also to check</div><ul class="checks">${ACHECKS.map(c=>`<li>${c}</li>`).join("")}</ul></div>`;
+  const ag=$("#ag2");
+  if(window.ResizeObserver){new ResizeObserver(()=>drawFlows()).observe(ag)}
+}
+function drawFlows(){
+  const ag=$("#ag2"), svg=$("#aflow"); if(!ag||!ag.offsetWidth) return;
+  const W=ag.scrollWidth,H=ag.scrollHeight; svg.setAttribute("viewBox",`0 0 ${W} ${H}`); svg.setAttribute("width",W); svg.setAttribute("height",H);
+  const base=ag.getBoundingClientRect();
+  const R=id=>{const e=ag.querySelector(`[data-m="${id}"]`).getBoundingClientRect();return {l:e.left-base.left,r:e.right-base.left,t:e.top-base.top,b:e.bottom-base.top,cx:(e.left+e.right)/2-base.left,cy:(e.top+e.bottom)/2-base.top}};
+  const linked=archSel?new Set([archSel]):null;
+  if(archSel) AFLOWS.forEach(([f,t])=>{if(f===archSel||t===archSel){linked.add(f);linked.add(t)}});
+  let paths="",labels="";
+  AFLOWS.forEach(([f,t,lab])=>{
+    const a=R(f),b=R(t); let d,mx,my;
+    if(b.l>=a.r-2){const x1=a.r,y1=a.cy,x2=b.l-1,y2=b.cy,dx=Math.max(24,(x2-x1)/2);d=`M${x1} ${y1} C${x1+dx} ${y1} ${x2-dx} ${y2} ${x2} ${y2}`;mx=(x1+x2)/2;my=(y1+y2)/2}
+    else if(b.r<=a.l+2){const x1=a.l,y1=a.cy,x2=b.r+1,y2=b.cy,dx=Math.max(24,(x1-x2)/2);d=`M${x1} ${y1} C${x1-dx} ${y1} ${x2+dx} ${y2} ${x2} ${y2}`;mx=(x1+x2)/2;my=(y1+y2)/2}
+    else if(b.t>=a.b){const x1=a.cx,y1=a.b,x2=b.cx,y2=b.t-1,dy=Math.max(10,(y2-y1)/2);d=`M${x1} ${y1} C${x1} ${y1+dy} ${x2} ${y2-dy} ${x2} ${y2}`;mx=(x1+x2)/2;my=(y1+y2)/2}
+    else{const x1=a.cx,y1=a.t,x2=b.cx,y2=b.b+1,dy=Math.max(10,(y1-y2)/2);d=`M${x1} ${y1} C${x1} ${y1-dy} ${x2} ${y2+dy} ${x2} ${y2}`;mx=(x1+x2)/2;my=(y1+y2)/2}
+    const hot=archSel&&(f===archSel||t===archSel);
+    const dim=(archSel&&!hot)||(archLayer&&!archSel&&AMM[f][1]!==archLayer&&AMM[t][1]!==archLayer);
+    const col=hot?`var(${ALM[AMM[f][1]][2]})`:"var(--muted)";
+    paths+=`<path d="${d}" class="fl${hot?" hot":""}${dim?" dim":""}" style="stroke:${col}" marker-end="url(#${hot?"am1":"am0"})"/>`;
+    if(hot&&lab) labels+=`<text x="${mx}" y="${my-4}" text-anchor="middle" class="fll">${lab}</text>`;
+  });
+  $("#aedges").innerHTML=paths; $("#alabels").innerHTML=labels;
+  $$(".achip").forEach(c=>{const id=c.dataset.m;c.classList.toggle("sel",id===archSel);c.classList.toggle("dimc",(linked&&!linked.has(id))||(!linked&&archLayer&&AMM[id][1]!==archLayer))});
+  $$(".al").forEach(b=>b.classList.toggle("sel",b.dataset.layer===archLayer));
+}
+function selectModule(id){
+  archSel=(archSel===id)?null:id; archLayer=null; drawFlows();
+  const p=$("#archPanel");
+  if(!archSel){p.hidden=true;return}
+  const m=AMM[archSel], L=ALM[m[1]], S=ASM[m[2]];
+  const ins=AFLOWS.filter(f=>f[1]===archSel), outs=AFLOWS.filter(f=>f[0]===archSel);
+  const dec=ADECIDE.find(d=>d[4].includes(archSel));
+  const li=(arr,dir)=>arr.map(f=>{const o=AMM[dir==="in"?f[0]:f[1]];return `<li><button class="linkish" data-m="${o[0]}">${dir==="in"?"←":"→"} ${o[3]}</button> <span>${f[2]}</span></li>`}).join("");
+  p.style.setProperty("--lc",`var(${L[2]})`);
+  p.innerHTML=`<div class="ap-h"><div><span class="ap-l">${L[1]} · ${S[1]}</span><h3>${m[3]}</h3></div><button class="dclose" data-mclose>Close</button></div>
+   <p>${m[4]}</p>${(m[5]||[]).filter(t=>t!=="todo").map(t=>`<p class="note" style="margin:0"><span class="mtag data">${t}</span> input to the composite score</p>`).join("")}
+   ${dec?`<div class="ap-dec"><span class="tbc">To decide</span> ${dec[0]}: ${dec[2]} <em>Decides: ${dec[3]}</em></div>`:""}
+   ${ins.length?`<div class="eyebrow">Receives from</div><ul class="ap-c">${li(ins,"in")}</ul>`:""}
+   ${outs.length?`<div class="eyebrow">Sends to</div><ul class="ap-c">${li(outs,"out")}</ul>`:""}`;
+  p.hidden=false;
+}
+function highlightLayer(l){archSel=null;archLayer=(archLayer===l)?null:l;$("#archPanel").hidden=true;drawFlows()}
+
+/* ===================== HELPERS ===================== */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const kvar=c=>`var(${CATS[c].v})`;
+const compClass=s=>{const c=SUBS[s].c;return c===1?"c1":c===2?"c2":c==="g"?"cg":"c3"};
+const fmt=n=>"US$"+Math.round(n).toLocaleString("en-US");
+const CAT_ORDER=Object.keys(CATS);
+const playersFor=(sub,noDigital)=>P.filter(p=>p.r[sub]&&!(noDigital&&p.cat==="digital")).sort((a,b)=>(CAT_ORDER.indexOf(a.cat)-CAT_ORDER.indexOf(b.cat))||(b.r[sub][0]-a.r[sub][0]));
+const pk=p=>p.kv?`var(${p.kv})`:kvar(p.cat);
+const chip=(id,sm)=>{const p=PM[id];return `<button class="chip${sm?" sm":""}" data-p="${id}" style="--k:${pk(p)}">${p.name}</button>`};
+const SUBB={}; BUDGET.forEach(c=>c.subs.forEach(s=>SUBB[s.id]=s));
+const TOTAL=BUDGET.reduce((a,c)=>a+c.amount,0);
+let catFilter=null, selected=null;
+
+/* ===================== MAP ===================== */
+function renderLegend(el){
+  el.innerHTML=`<span class="lbl">Player type</span>`+Object.entries(CATS).filter(([k])=>!(el.id==="legend"&&k==="digital")).map(([k,c])=>`<button class="fbtn" data-cat="${k}" aria-pressed="${catFilter===k}"><i style="background:${kvar(k)}"></i>${c.label}</button>`).join("")+`<button class="clearsel" data-clear ${catFilter||selected?"":"hidden"}>Clear highlight</button>`;
+}
+function subCard(s){
+  const S=SUBS[s], B=SUBB[s];
+  const items=B?`<ul class="ssl">${B.items.map(i=>`<li title="${i.name.replace(/"/g,'&quot;')}"><span class="code">${i.id}</span><span>${SS_LABEL[i.id]||i.name}</span><span class="amt">${i.amount>0?fmt(i.amount):""}</span></li>`).join("")}</ul>`:"";
+  return `<article class="sc"><div class="sc-top"><h3><span class="n">${s==="gov"?"Gov":s}</span>${S.name}</h3>${B&&B.amount>0?`<span class="samt">${fmt(B.amount)}</span>`:""}</div>
+    ${items}
+    <details class="steps" open><summary>Key process steps</summary><ul>${S.steps.map(x=>`<li>${x}</li>`).join("")}</ul></details>
+    <div class="out">Output: ${S.out}</div>
+    ${s==="2.3"?`<p class="jcav"><span class="tbc">Caveat</span> Tranches of US$1,295,000 pay US$500 to only 2,590 youth, not 3,000. See Budget.</p>`:""}
+    <div class="who"><span class="eyebrow">Key players</span>${playersFor(s,1).map(p=>chip(p.id)).join("")}</div></article>`;
+}
+function compHead(n,eyebrow,title,meta){
+  const amt=BUDGET[n-1].amount;
+  return `<div class="comp-head"><div><div class="eyebrow" style="color:inherit;opacity:.85">${eyebrow}</div><h2>${title}</h2><div class="meta">${meta}</div></div><div class="amt">${fmt(amt)}<small>${(amt/TOTAL*100).toFixed(1)}% of project cost</small></div></div>`;
+}
+function renderMap(){
+  $("#mapBody").innerHTML=`
+  <div class="comp c1">${compHead(1,"Stage 1 · all participants","Component 1 · Improving Labor Market Readiness","9,000 youth aged 18–34 · ≥50% women · 5% persons with disabilities")}
+    <div class="subs">${["1.1","1.2","1.3"].map(subCard).join("")}</div></div>
+  <div class="gate"><div><div class="eyebrow">Between Stage 1 and 2</div><h2>Stage 2 selection</h2><div class="ratio">9,000 → ~3,000</div><p class="note" style="margin-top:4px">Run in the DEVY admin portal. Budgeted as a validation workshop under 1.2.4.4 (no direct cost).</p></div>
+    <div><div class="eyebrow" style="margin-bottom:6px">Composite score</div><ol><li>SkillCraft score and entrepreneurial aptitude</li><li>Attendance and completion</li><li>Digital skills demonstrated</li><li>Preliminary business concept</li></ol><p class="note">Exact weights still to be defined by CoK <span class="tbc">[TBC]</span></p></div>
+    <div class="who"><span class="eyebrow" style="width:100%">Key players</span>${playersFor("gate",1).map(p=>chip(p.id)).join("")}</div></div>
+  <div class="comp c2">${compHead(2,"Stage 2 · selected participants","Component 2 · Promoting Digital Entrepreneurship Opportunities","~3,000 youth · ≥50% women · grants in two tranches; enhanced grants for top 100")}
+    <div class="subs">${["2.1","2.2","2.3"].map(subCard).join("")}</div></div>
+  <div class="comp c3">${compHead(3,"Cross-cutting · throughout","Component 3 · Digital Systems, Institutional Capacity & Project Management","MIFOTRA leads policy and integration; CoK leads implementation")}
+    <div class="subs">${["3.1","3.2","gov"].map(subCard).join("")}</div></div>`;
+}
+
+/* ===================== MATRIX ===================== */
+function renderMatrix(){
+  const hcls=s=>({1:"c1h",2:"c2h",3:"c3h",g:"gh"})[SUBS[s].c];
+  let h=`<thead><tr><th class="pl">Player</th>${SUB_ORDER.map(s=>`<th class="${hcls(s)}" title="${SUBS[s].name}">${SUB_SHORT[s]||s}</th>`).join("")}<th>#</th></tr></thead><tbody>`;
+  for(const [k,c] of Object.entries(CATS)){
+    if(catFilter && catFilter!==k) continue;
+    h+=`<tr class="grp"><td colspan="${SUB_ORDER.length+2}">${c.label}</td></tr>`;
+    for(const p of P.filter(p=>p.cat===k)){
+      h+=`<tr><td class="pl">${chip(p.id)}</td>${SUB_ORDER.map(s=>p.r[s]?`<td><button class="dot ${p.r[s][0]?"lead":""}" data-p="${p.id}" data-s="${s}" style="--k:${pk(p)}" aria-label="${p.name}: ${p.r[s][0]?"leads":"supports"} ${SUBS[s].name}" title="${p.r[s][1][0].replace(/<[^>]+>/g,'')}"></button></td>`:`<td></td>`).join("")}<td class="count">${Object.keys(p.r).length}</td></tr>`;
+    }
+  }
+  $("#mx").innerHTML=h+"</tbody>";
+}
+
+/* ===================== TIMELINE (Gantt) ===================== */
+function gantt(rows,caption){
+  const yrs=[];MONTHS.forEach((m,i)=>{if(!yrs.length||yrs[yrs.length-1].y!==m.y)yrs.push({y:m.y,n:1});else yrs[yrs.length-1].n++});
+  const head1=`<tr><th class="gl"></th>${yrs.map(y=>`<th colspan="${y.n}" class="gy">${y.y}</th>`).join("")}</tr>`;
+  const head2=`<tr><th class="gl"></th>${MONTHS.map(m=>`<th class="gm">${m.m[0]}</th>`).join("")}</tr>`;
+  const body=rows.map(([lab,col,bars,ms])=>`<tr><td class="gl">${lab}</td>${MONTHS.map((m,i)=>{
+     const on=bars.some(([a,b])=>i>=a&&i<=b), mk=(ms||[]).includes(i);
+     return `<td class="gc${m.m==="Jan"?" yb":""}">${on?`<i class="gb" style="background:var(--${col})" title="${lab}: ${m.m} ${m.y}"></i>`:""}${mk?`<b class="gd" style="color:var(--${col==="gate"?"gate":col})" title="${lab}: ${m.m} ${m.y}">◆</b>`:""}</td>`}).join("")}</tr>`).join("");
+  return `<figure class="gantt"><div class="gwrap"><table class="gt"><thead>${head1}${head2}</thead><tbody>${body}</tbody></table></div><figcaption>${caption}</figcaption></figure>`;
+}
+
+/* ===================== BENEFICIARY JOURNEY ===================== */
+function jcard(j){
+  return `<article class="jcard" id="${j.id}"><div class="plate"><img src="${j.img}" alt="${j.alt}" loading="lazy"></div>
+   <div class="body"><span class="jstep">Step ${j.n}</span><span class="jtag">${j.t}</span><p>${j.txt}</p>
+   <div class="jfacts">${j.facts.map(f=>`<span>${f}</span>`).join("")}</div>
+   ${j.caveat?`<p class="jcav"><span class="tbc">Caveat</span> Grant tranches in the budget cover US$500 for 2,590 youth, not 3,000. See Budget.</p>`:""}
+   <div class="who">${j.p.map(id=>chip(id,1)).join("")}</div></div></article>`;
+}
+function renderJourney(){
+  const g=k=>JB.filter(j=>j.grp===k).map(jcard).join("");
+  $("#journeyBody").innerHTML=`
+  <p class="intro">What a young person goes through in DEVY. Everyone completes Stage 1; after profiling the cohort splits into two tracks.</p>
+  <div class="plabel" style="color:var(--gate)">Stage 1 · 9,000 selected participants</div>
+  <div class="jrow s1">${g("s1")}</div>
+  <div class="elig">
+    <div><b>Who can apply</b><ul>
+      <li>Age 18–34 (16–17 by exception, e.g. orphans or household heads)</li>
+      <li>Living in Kigali, residence verified locally</li>
+      <li>Not in employment, education or training (NEET)</li>
+      <li>Education A-level (S6) or below</li>
+      <li>Household in the bottom 60% of income (Imibereho), bottom 40% first</li>
+      <li>Priority: 50%+ women, 5%+ persons with disabilities</li></ul></div>
+    <div><b>More eligible youth than places</b><p>If more than 9,000 eligible youth apply, a stratified lottery picks the participants and a waitlist fills drop-outs.</p>
+      <p>Eligible youth who are not selected become the <b>control group for the impact evaluation</b>. They also take the SkillCraft test on Ingazi (+Lumina), so their skills can be compared with participants’.</p></div>
+  </div>
+  <div class="split"><div class="ratio">9,000 → ~6,000 + ≤3,000</div><p>A composite score from SkillCraft (x), attendance (y) and a business-idea score (z) decides each participant’s track.</p></div>
+  <div class="fork">
+    <div class="sa"><div class="plabel">Track A · wage employment · ~6,000 youth</div>${g("sa")}</div>
+    <div class="sb"><div class="plabel">Track B · entrepreneurship · ≤3,000 youth</div><div class="pb">${g("sb")}</div></div>
+  </div>
+  <h2 class="sech">Project flow</h2>
+  <p class="intro" style="margin-bottom:12px">The decision logic behind the journey: who is screened out, who is randomly selected, how the composite score splits the cohort, and who gets a stipend or an enhanced grant. From the DEVY System Integration Discussion deck (1 Oct 2026).</p>
+  <figure class="flowfig"><div class="plate wide"><img src="img/project-flow.webp" alt="DEVY project flow: intake and eligibility screening, random selection if more than 9,000 eligible, control group takes SkillCraft; Phase 1 training and SkillCraft; composite score f(x, y, z) sends up to 3,000 to entrepreneurship and others to wage employment; f(x, y) threshold gives about 500 a 4-month stipend; entrepreneurship track runs a competition, USD 500 seed grant for all and USD 800–1,500 enhanced grants for the top 100; aftercare and monitoring for all" loading="lazy"></div>
+  <figcaption>Green = yes, orange = no. Data x = SkillCraft score, y = attendance, z = business-idea score (entrepreneurship applicants only).</figcaption></figure>
+  <div class="through">
+    <div><b>Grievances</b>Through MBAZA or local GRCs, escalating to CoK SPIU, then MIFOTRA or the World Bank.</div>
+    <div><b>Inclusion</b>50%+ women, 5%+ PwD; childcare, safe rooms, accessible venues.</div>
+    <div><b>One login</b>The national ID links USSD, Ingazi and the Gateway, so youth register once.</div>
+    <div><b>Follow-up</b>Tracer baseline Sep 2027, endline Sep 2028; employment tracked through RSSB records.</div>
+  </div>
+  <h2 class="sech">Timeline for participants</h2>
+  ${gantt(GANTT_YOUTH,"Implementation Gantt (ver. 18 Sep). Each apprenticeship lasts 4 months (PAD) within the Sep 2027 – Mar 2028 window. ◆ = milestone.")}`;
+}
+
+/* ===================== ADMINISTRATION JOURNEY ===================== */
+const SYS2LAYER={ussd:"youth",admin:"devy",ingazi:"ingazi",gw:"gw",natdb:"ext",pay:"ext",ilmis:"ext"};
+function renderAdmin(){
+  const head=SYS.map(s=>`<th style="--sc:var(${s.v})">${s.name}<span></span></th>`).join("");
+  const rows=AJ.map((a,i)=>`<tr data-a="${a.id}"><td class="st"><b class="mono">${i}</b>&nbsp; ${a.t}</td>${SYS.map(s=>{const v=a.sys[s.id];return `<td style="--sc:var(${s.v})">${v===2?'<i class="on" title="Main system"></i>':v===1?'<i class="rd" title="Supporting"></i>':""}</td>`}).join("")}</tr>`).join("");
+  const cards=AJ.map((a,i)=>`<div class="astage"><div class="num">${i}</div><div class="acard" id="${a.id}">
+     <div class="ttl"><h3>${a.t}</h3><span class="when">${a.when}</span></div>
+     <div class="agrid"><div><h4>What the administrator does</h4><ol>${a.act.map(x=>`<li>${x}</li>`).join("")}</ol></div>
+       <div style="display:grid;gap:12px;align-content:start"><div><h4>Who</h4><p>${a.who}</p></div><div><h4>Data managed</h4><p>${a.data}</p></div>
+       <div><h4>Systems</h4><div class="syschips">${Object.entries(a.sys).map(([k,v])=>`<button class="sys ${v===2?"solid":""}" data-layer="${SYS2LAYER[k]}" style="--sc:var(${SYSM[k].v})">${SYSM[k].name}</button>`).join("")}</div></div>
+       ${a.open?`<div><h4>To decide</h4><p class="tbc" style="white-space:normal">${a.open}</p></div>`:""}</div></div></div></div>`).join("");
+  $("#adminBody").innerHTML=`
+  <p class="intro">The programme seen from the government side: which systems CoK and MIFOTRA administrators set up, what data they manage at each stage, and where DEVY connects to iLMIS and other national systems. Click a row to jump to the stage, or a system to see it in the architecture.</p>
+  <div class="gov-note">
+    <div><b style="color:var(--s-devy)">CoK owns</b>USSD *194# app and the DEVY admin portal: applicant registry, selection, training and stipend management, grants, M&amp;E, grievance cases.</div>
+    <div><b style="color:var(--s-ingazi)">MIFOTRA owns</b>Ingazi (+Lumina) as the youth front door, the Integration Gateway (SSO, CV / profile store, employment tracking) and iLMIS.</div>
+    <div><b>Data rules</b>National ID as the common key; application data in the National Data Center; consent at intake; Data Protection Law 058/2021.</div>
+  </div>
+  <div class="eyebrow" style="margin-bottom:8px">Systems used at each stage · filled = main system, outline = supporting</div>
+  <div class="lanes-wrap"><table class="lanes"><thead><tr><th class="st">Stage</th>${head}</tr></thead><tbody>${rows}</tbody></table></div>
+  ${cards}
+  ${indicatorsHTML()}
+  <h2 class="sech">Implementation timeline</h2>
+  ${gantt(GANTT_ADMIN,"Implementation Gantt (ver. 18 Sep), Oct 2026 – Dec 2028. ◆ = milestone.")}`;
+}
+
+
+/* ===================== M&E INDICATORS (PAD Results Framework) ===================== */
+const INDIC=[
+ ["PDO","Number of new or better jobs","Beneficiaries reporting wage or self-employment","2,000","6,000","Women (1,000 / 3,000); % wage employment (60%); % new or more productive businesses (40%)","Every 6 months","Project MIS · administrative data","CoK","collect"],
+ ["PDO","People using digitally enabled services (CRI)","Beneficiaries reporting use of digital payments, digital training, e-commerce, e-coaching, digital marketing, business management tools","–","6,000","Female (3,000); youth (6,000)","Every 6 months","Citizen engagement survey · phone survey","CoK","survey"],
+ ["PDO","Improved employability","Beneficiaries who completed all required attendance, training and the skills profiling test","3,000","8,000","Women (50%)","Once Component 1 is complete; reported every 6 months","Project MIS · administrative data","CoK","collect"],
+ ["PDO","Share of participants satisfied with services","Satisfaction asked at the end of each component","80%","90%","Female; youth","End of each component; reported every 6 months","Project MIS · administrative data","CoK","collect"],
+ ["Intermediate","Beneficiaries of entrepreneurship-focused interventions","Youth in the entrepreneurship track","1,500","3,000","Share of women","Every 6 months","Project MIS · administrative data","CoK","collect"],
+ ["Intermediate","Grants disbursed","Youth who received outcome-based grants, conditional on business launch and activity","1,500","3,000","Women","Every 6 months","Project MIS · administrative data","CoK","collect"],
+ ["Intermediate","M&E reports generated through the evidence system","Reports produced from the dashboard / MIS","–","12","–","Cumulative by Feb 2029","Dashboard / MIS","CoK","collect"],
+ ["Intermediate","People with institutional capacity to engage youth","Project staff, para-social workers, digital ambassadors, YEGO staff trained (baseline 5)","20","50","Female; youth","Every 6 months","Field reports","MIFOTRA","report"]
+];
+const ROLE={collect:["Collect in portal","on"],survey:["Store survey results","rd"],report:["Record field reports","rd"]};
+function indicatorsHTML(){
+  return `<h2 class="sech">M&amp;E indicators the admin portal must produce</h2>
+  <p class="intro" style="margin-bottom:12px">From the PAD Results Framework. Baseline is 0 (Feb 2026) unless noted; Period 1 is Aug 2027 and closing is Feb 2029. All results are disaggregated by sex and disability status.</p>
+  <div class="tbl-wrap panel" style="padding:0"><table class="t ind"><thead><tr><th>Level</th><th>Indicator</th><th class="r">Aug 2027</th><th class="r">Feb 2029</th><th>Disaggregation</th><th>Frequency</th><th>Data source</th><th>Portal role</th></tr></thead><tbody>
+  ${INDIC.map(i=>`<tr><td><span class="lvl ${i[0]==="PDO"?"pdo":""}">${i[0]}</span></td><td><b>${i[1]}</b><div class="note" style="margin:2px 0 0">${i[2]}</div></td><td class="r">${i[3]}</td><td class="r">${i[4]}</td><td>${i[5]}</td><td>${i[6]}</td><td>${i[7]}<div class="note" style="margin:2px 0 0">Responsible: ${i[8]}</div></td><td><span class="role ${ROLE[i[9]][1]}">${ROLE[i[9]][0]}</span></td></tr>`).join("")}
+  </tbody></table></div>
+  <div class="panel"><h2>Data fields the portal needs to compute them</h2><p class="meta">Derived from the indicator definitions above</p>
+   <ul class="fields">
+    <li><b>Profile</b>National ID, sex, age, disability status, location, household income band</li>
+    <li><b>Participation</b>Cohort, attendance per session, training completion, SkillCraft completion</li>
+    <li><b>Track</b>Composite score, track assignment, entrepreneurship participation</li>
+    <li><b>Outcomes</b>Employment status every 6 months (self-report, RSSB / PAYE via Gateway), wage vs self-employment</li>
+    <li><b>Grants</b>Business launch evidence, tranche payments, milestone checks</li>
+    <li><b>Feedback</b>Satisfaction score at the end of each component; digital service use (phone survey)</li>
+   </ul>
+   <p class="note"><span class="tbc">Note</span> The “Grants disbursed” target is 3,000 youth, but grant tranches in the budget cover US$500 for only 2,590 (see Budget).</p></div>`;
+}
+
+/* ===================== BUDGET ===================== */
+let showZero=true; const openSS=new Set();
+function renderBudgetTree(){
+  const ccol={1:"var(--c1)",2:"var(--c2)",3:"var(--c3)"};
+  const z=v=>v>0?fmt(v):"–";
+  let h="";
+  BUDGET.forEach(c=>{
+    h+=`<tr class="L0"><td class="code">C${c.id}</td><td>${c.name}</td><td class="amt">${fmt(c.amount)}</td></tr>`;
+    c.subs.forEach(s=>{
+      h+=`<tr class="L1" style="--cc:${ccol[c.id]}"><td class="code">${s.id}</td><td>${SUBS[s.id]?SUBS[s.id].name:s.name}</td><td class="amt">${fmt(s.amount)}</td></tr>`;
+      s.items.forEach(i=>{
+        const open=openSS.has(i.id);
+        const acts=i.acts.filter(a=>showZero||a.amount>0);
+        h+=`<tr class="L2"><td class="code"><button class="tog" data-ss="${i.id}" aria-expanded="${open}">${open?"▾":"▸"}</button>${i.id}${i.orig&&i.orig.replace(/[.\-:]+$/,"")!==i.id?`<span class="was">was ${i.orig.replace(/[.\-:]+$/,"")}</span>`:""}</td><td>${i.name} <span class="note" style="margin:0;font-weight:400">(${i.acts.length})</span></td><td class="amt ${i.amount>0?"":"zero"}">${z(i.amount)}</td></tr>`;
+        if(open) acts.forEach(a=>{
+          const o=a.orig.replace(/[.\-:]+$/,"");
+          h+=`<tr class="L3"><td class="code">${a.id}${o!==a.id?`<span class="was">was ${o}</span>`:""}</td><td>${a.name}${a.note?`<details><summary>Cost basis / note</summary><p>${a.note.replace(/</g,"&lt;")}</p></details>`:""}</td><td class="amt ${a.amount>0?"":"zero"}">${z(a.amount)}</td></tr>`;
+        });
+      });
+    });
+  });
+  $("#btree").innerHTML=`<tbody>${h}</tbody><tfoot><tr><td></td><td style="font-weight:700">Total project cost</td><td class="amt">${fmt(TOTAL)}</td></tr></tfoot>`;
+}
+function renderBudget(){
+  const subs=BUDGET.flatMap(c=>c.subs.map(s=>({...s,c:c.id})));
+  const maxS=Math.max(...subs.map(s=>s.amount));
+  const ccol={1:"var(--c1)",2:"var(--c2)",3:"var(--c3)"};
+  const contracts=[
+    ["Service provider for project implementation (C1 & C2)","CoK","3 years",965371,"sp"],
+    ["IT firm: digital system for informal workers","CoK","6 months",237543,"itfirm"],
+    ["Consultant: job portals and Ingazi dashboard (3.1.1)","MIFOTRA","7 months",76445,"mcons"],
+    ["Contractor: YEGO hub refurbishment","CoK","3 months",20629,"works"],
+    ["Consultant: foundational skills-gap assessment","CoK","3 months",8000,"cons"]];
+  const ctot=contracts.reduce((a,c)=>a+c[3],0);
+  const fy=[["FY26",.07],["FY27",.13],["FY28",1.60],["FY29",1.30],["FY30",.05]];
+  const w=520,h=230,pl=40,pb=34,pt=16,pr=10,max=1.8,bw=(w-pl-pr)/fy.length,y=v=>pt+(h-pt-pb)*(1-v/max);
+  const bars=fy.map(([l,v],i)=>{const x=pl+i*bw+bw*.2;return `<rect x="${x}" y="${y(v)}" width="${bw*.6}" height="${y(0)-y(v)}" rx="3" style="fill:var(--c1)"/><text x="${x+bw*.3}" y="${y(v)-5}" text-anchor="middle" font-size="12" font-family="IBM Plex Mono,monospace">${v.toFixed(2)}</text><text x="${x+bw*.3}" y="${h-12}" text-anchor="middle" font-size="12" style="fill:var(--muted)">${l}</text>`}).join("");
+  const grid=[0,.5,1,1.5].map(v=>`<line x1="${pl}" x2="${w-pr}" y1="${y(v)}" y2="${y(v)}" style="stroke:var(--line)"/><text x="${pl-6}" y="${y(v)+4}" text-anchor="end" font-size="11" style="fill:var(--muted)">${v}</text>`).join("");
+  const transfers=[["1.2.4.3","Transport allowances during training (whether to pay is still to be discussed)","Shown in quarterly plan only (US$180,000); Total per Activity is 0",0],["1.3.1.5","Apprenticeship / internship stipends (≥500 youth)","",204000],["2.2.1.3","Enhanced grants: 30 × US$1,500, 30 × US$1,000, 40 × US$800","",107000],["2.3.1.1","Grant tranche 1 (30%), 3,000 youth","",395000],["2.3.1.2","Grant tranche 2 (70%), 3,000 youth","",900000]];
+  const ttot=transfers.reduce((a,t)=>a+t[3],0);
+  $("#budgetBody").innerHTML=`
+  <div class="kpis">
+    <div class="kpi"><span class="v">US$3.23M</span><span class="l">Project cost (+ US$0.27M World Bank technical support = US$3.5M)</span></div>
+    <div class="kpi k1"><span class="v">US$600K</span><span class="l">Component 1 · ≈US$67 per participant (derived, 9,000)</span></div>
+    <div class="kpi k2"><span class="v">US$2.00M</span><span class="l">Component 2 · ≈US$667 per participant (derived, 3,000)</span></div>
+    <div class="kpi k3"><span class="v">US$630K</span><span class="l">Component 3 · systems, capacity, project management</span></div>
+  </div>
+  <div class="panel"><h2>Allocation by sub-component</h2><p class="meta">Total per Activity, JSDF Budget Activity sheet · share of US$3.23M</p>
+    <div class="hbars">${subs.map(s=>`<div class="hbar"><div class="lab"><b>${s.id}</b>${SUBS[s.id].name}</div><div class="track"><div style="width:${(s.amount/maxS*100).toFixed(1)}%;background:${ccol[s.c]}"></div></div><div class="v">${fmt(s.amount)}<small>${(s.amount/TOTAL*100).toFixed(1)}%</small></div></div>`).join("")}</div>
+    <p class="note">Two lines carry 52% of the project: grant tranches under 2.3.1 (US$1.295M) and service-provider delivery under 2.1.1.1 (US$598,000).</p></div>
+  <div class="panel"><h2>Budget by activity</h2><p class="meta">Component → sub-component → sub-subcomponent → sub-activity. Sub-activities are renumbered in row order under each sub-subcomponent; red tags show the original number where it differed. Open a line to see sub-activities and cost notes.</p>
+    <div class="btools"><button class="tbtn" data-bx="open">Expand all</button><button class="tbtn" data-bx="close">Collapse all</button><label><input type="checkbox" id="bzero" checked> Show sub-activities with no direct cost</label></div>
+    <div class="tbl-wrap"><table class="bt" id="btree"></table></div>
+    <p class="note">This page uses the “Costed / Total per Activity” column only. In the sheet, quarterly and annual columns disagree with it on several lines (for example 1.2.4.3 transport allowances, 2.3.1.3 aftercare, 1.3.1.9 validation workshops); these need reconciling <span class="tbc">[TBC]</span>. One note row under 1.1.3 (“Workshops to validate 1.1.2.1–1.1.2.4”) has no amount and is not listed.</p></div>
+  <div class="caveat" role="note"><div class="cv-h"><span class="cv-badge">Caveat</span><h2>Grant budget does not cover US$500 for 3,000 youth</h2></div>
+    <div class="cv-grid">
+      <div><span class="cv-n">US$1,295,000</span><span class="cv-l">Grant tranches budgeted (2.3.1.1 US$395,000 + 2.3.1.2 US$900,000)</span></div>
+      <div><span class="cv-n">US$1,500,000</span><span class="cv-l">Needed for US$500 × 3,000 youth (PAD)</span></div>
+      <div><span class="cv-n">−US$205,000</span><span class="cv-l">Gap (derived)</span></div>
+    </div>
+    <p>To close the gap, one of these has to change:</p>
+    <ol><li><b>Reduce the entrepreneurship cohort to 2,590 youth</b> at US$500 each (US$1,295,000 ÷ US$500), or</li>
+      <li><b>Reduce the grant to about US$432 per person</b> for 3,000 youth (US$1,295,000 ÷ 3,000 = US$431.67), or</li>
+      <li>Reallocate about US$205,000 from other lines into 2.3.1.</li></ol>
+    <p class="note" style="margin:0">Enhanced grants for the top ≤100 (US$107,000) are budgeted separately under 2.2.1.3 and are not affected. The tranche split also differs from the 30% / 70% wording: 30% of US$1.5M would be US$450,000, not US$395,000.</p></div>
+  <div class="two">
+    <div class="panel"><h2>Direct transfers to youth</h2><p class="meta">Cash lines in the budget sheet</p>
+      <div class="tbl-wrap"><table class="t" style="min-width:0"><thead><tr><th>Line</th><th>Transfer</th><th class="r">Total</th></tr></thead><tbody>
+      ${transfers.map(t=>`<tr><td class="mono">${t[0]}</td><td>${t[1]}${t[2]?`<div class="note" style="margin:2px 0 0">${t[2]} <span class="tbc">[TBC]</span></div>`:""}</td><td class="r">${t[3]?fmt(t[3]):"–"}</td></tr>`).join("")}</tbody>
+      <tfoot><tr><td></td><td>Total</td><td class="r">${fmt(ttot)}</td></tr></tfoot></table></div>
+      <p class="note">${fmt(ttot)} is ${(ttot/TOTAL*100).toFixed(0)}% of project cost (derived).</p></div>
+    <div class="panel"><h2>Expected disbursements</h2><p class="meta">US$ millions by World Bank fiscal year (Jul–Jun) · PAD</p>
+      <div class="tbl-wrap"><svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="Disbursement by fiscal year, peaking at 1.60 million in FY28">${grid}${bars}</svg></div>
+      <p class="note">Cumulative US$3.14M by FY30; the FY28 peak is when allowances, stipends and grants are paid.</p></div>
+  </div>
+  <div class="panel"><h2>Procurement packages</h2><p class="meta">PPSD · all post review · contracts from Nov 2026. Click a name for the contractor’s role.</p>
+    <div class="tbl-wrap"><table class="t"><thead><tr><th>Package</th><th>Agency</th><th>Duration</th><th class="r">Estimate</th></tr></thead><tbody>
+    ${contracts.map(c=>`<tr><td><button class="chip" data-p="${c[4]}" style="--k:${pk(PM[c[4]])}">${c[0]}</button></td><td>${c[1]}</td><td>${c[2]}</td><td class="r">${fmt(c[3])}</td></tr>`).join("")}</tbody>
+    <tfoot><tr><td colspan="3">Total procured packages</td><td class="r">${fmt(ctot)}</td></tr></tfoot></table></div></div>
+  <div class="panel"><h2>Flow of funds</h2><p class="meta">PIM §6.4 and §6.7</p>
+    <div class="flow">
+      <div class="node"><b>Japan Social Development Fund → World Bank (trustee)</b>Report-based disbursement on quarterly IFRs</div><div class="arr">↓</div>
+      <div class="node"><b>National Bank of Rwanda · two US$ Designated Accounts</b>One under MIFOTRA, one under CoK</div><div class="arr">↓</div>
+      <div class="row"><div class="node"><b>MIFOTRA operational account (RWF)</b>3.1: SPIU staff, Ingazi dashboard consultant, coordination</div><div class="node"><b>CoK operational account (RWF)</b>C1, C2, 3.2: contracts, stipends, grants, SPIU staff</div></div><div class="arr">↓</div>
+      <div class="row"><div class="node"><b>Vendors &amp; service providers</b>Paid on verified outputs</div><div class="node"><b>Youth (SACCO / bank accounts)</b>Allowances on attendance; grants on verified milestones</div></div>
+    </div></div>`;
+  renderBudgetTree();
+}
+
+/* ===================== DRAWER ===================== */
+function openPlayer(id,focusSub){
+  const p=PM[id]; selected=id;
+  const subs=SUB_ORDER.filter(s=>p.r[s]);
+  const jsteps=JB.filter(s=>s.p.includes(id));
+  const groups=[["Component 1",["1.1","1.2","1.3"]],["Stage 2 selection",["gate"]],["Component 2",["2.1","2.2","2.3"]],["Component 3 & governance",["3.1","3.2","gov"]]];
+  const d=$("#drawer");
+  d.style.setProperty("--k",pk(p));
+  d.innerHTML=`<div class="dhead"><div><span class="cat"><i></i>${CATS[p.cat].label}</span><h2 id="dTitle">${p.name}</h2></div><button class="dclose" data-close>Close</button></div>
+   <p class="dblurb">${p.blurb}</p>
+   ${groups.map(([g,ss])=>{const hit=ss.filter(s=>p.r[s]);if(!hit.length)return"";return `<div class="dsec"><div class="eyebrow">${g}</div>${hit.map(s=>`<div class="resp ${compClass(s)}" id="r-${s.replace(".","-")}"><div class="rh"><span>${s==="gov"||s==="gate"?"":s+" "}${SUBS[s].name}</span><span>${p.r[s][0]?"Lead":"Support"}</span></div><ul>${p.r[s][1].map(x=>`<li>${x}</li>`).join("")}</ul></div>`).join("")}</div>`}).join("")}
+   ${jsteps.length?`<div class="dsec"><div class="eyebrow">Beneficiary touchpoints</div><div class="jlinks">${jsteps.map(s=>`<button class="jlink" data-j="${s.id}">${s.t}</button>`).join("")}</div></div>`:""}
+   ${p.meta?`<div class="dmeta">${p.meta}</div>`:""}
+   <div class="dmeta">Active in ${subs.length} of ${SUB_ORDER.length} sub-components · lead in ${subs.filter(s=>p.r[s][0]).length}</div>`;
+  d.hidden=false; $("#scrim").hidden=false;
+  if(focusSub){const el=$("#r-"+focusSub.replace(".","-"),d); el&&el.scrollIntoView({block:"nearest"});}
+  $(".dclose",d).focus();
+  applyHighlight();
+}
+function closeDrawer(){ $("#drawer").hidden=true; $("#scrim").hidden=true; }
+function applyHighlight(){
+  $$(".chip[data-p]").forEach(c=>{
+    const p=PM[c.dataset.p];
+    const dim=(catFilter&&p.cat!==catFilter)||(selected&&c.dataset.p!==selected&&!catFilter);
+    c.classList.toggle("dim",!!dim); c.classList.toggle("on",c.dataset.p===selected);
+  });
+  $$(".legend").forEach(renderLegend);
+}
+
+/* ===================== TABS & EVENTS ===================== */
+const VIEWS=["map","matrix","journey","admin","arch","budget"];
+function show(v){
+  VIEWS.forEach(x=>{$("#"+x).hidden=x!==v;$("#tab-"+x).setAttribute("aria-selected",x===v)});
+  if(v==="arch")requestAnimationFrame(drawFlows);else{const ap=$("#archPanel");if(ap)ap.hidden=true;archSel=null}
+  try{localStorage.setItem("devy-tab",v)}catch(e){}
+  try{history.replaceState(null,"","#"+v)}catch(e){}
+}
+const smooth=()=>matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth";
+function flashTo(el){el.scrollIntoView({behavior:smooth(),block:"center"});el.classList.remove("flash");void el.offsetWidth;el.classList.add("flash")}
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-p],[data-cat],[data-clear],[data-close],[data-j],[data-ss],[data-bx],[data-layer],[data-m],[data-mclose],tr[data-a],nav.tabs button");
+  if(!t) return;
+  if(t.matches("nav.tabs button")){show(t.getAttribute("aria-controls"));return}
+  if(t.dataset.close!==undefined){closeDrawer();return}
+  if(t.dataset.clear!==undefined){catFilter=null;selected=null;renderMatrix();applyHighlight();return}
+  if(t.dataset.cat){catFilter=catFilter===t.dataset.cat?null:t.dataset.cat;selected=null;renderMatrix();applyHighlight();return}
+  if(t.dataset.j){closeDrawer();show("journey");flashTo($("#"+t.dataset.j));return}
+  if(t.dataset.ss){openSS.has(t.dataset.ss)?openSS.delete(t.dataset.ss):openSS.add(t.dataset.ss);renderBudgetTree();return}
+  if(t.dataset.bx){if(t.dataset.bx==="open")BUDGET.forEach(c=>c.subs.forEach(s=>s.items.forEach(i=>openSS.add(i.id))));else openSS.clear();renderBudgetTree();return}
+  if(t.dataset.layer){if(!t.classList.contains("al")){show("arch");archLayer=null;$("#archBody").scrollIntoView({behavior:smooth()})}highlightLayer(t.dataset.layer);return}
+  if(t.dataset.mclose!==undefined){selectModule(archSel);return}
+  if(t.dataset.m){if($("#arch").hidden)show("arch");if(archSel===t.dataset.m&&!t.classList.contains("achip"))return;selectModule(t.dataset.m);if(!t.classList.contains("achip")){const c=$(`.achip[data-m="${t.dataset.m}"]`);c&&c.scrollIntoView({behavior:smooth(),block:"center",inline:"center"})}return}
+  if(t.matches("tr[data-a]")){flashTo($("#"+t.dataset.a));return}
+  if(t.dataset.p){openPlayer(t.dataset.p,t.dataset.s);return}
+});
+document.addEventListener("change",e=>{if(e.target.id==="bzero"){showZero=e.target.checked;renderBudgetTree()}});
+$("#scrim").addEventListener("click",closeDrawer);
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&!$("#drawer").hidden)closeDrawer();
+  if(e.key==="Escape"&&archSel)selectModule(archSel);
+});
+$("nav.tabs").addEventListener("keydown",e=>{
+  if(!["ArrowLeft","ArrowRight"].includes(e.key))return;
+  const tabs=$$("nav.tabs button"),i=tabs.indexOf(document.activeElement);if(i<0)return;
+  const n=tabs[(i+(e.key==="ArrowRight"?1:-1)+tabs.length)%tabs.length];n.focus();show(n.getAttribute("aria-controls"));
+});
+
+renderMap();renderMatrix();renderJourney();renderAdmin();renderArch();renderBudget();applyHighlight();
+let start=(location.hash||"").slice(1);
+if(!VIEWS.includes(start)){try{start=localStorage.getItem("devy-tab")}catch(e){start=null}}
+show(VIEWS.includes(start)?start:"map");
+</script>
+
+</body></html>
